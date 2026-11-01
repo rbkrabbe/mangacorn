@@ -123,6 +123,8 @@ const CAPTIONS = {
   blob: () => 'Pas på, en Blobbo! Hop på hovedet af den',
   twoblob: () => 'To Blobboer?!',
   bats: () => 'Et Tordenpust flyver rundt…',
+  storm: () => 'To Tordenpust i luften!',
+  trio: () => 'Tre Blobboer på række!',
   star: () => 'En regnbuestjerne gør dig uovervindelig',
   feather: () => 'En sky-fjer giver dobbelthop',
   goal: () => 'Løb videre til næste side!',
@@ -135,9 +137,16 @@ function buildLevel(n) {
   if (n === 1) seq = ['start', 'coins', 'steps', 'blob', 'star', 'goal'];
   else if (n === 2) seq = ['start', 'coins', 'feather', 'blob', 'bats', 'twoblob', 'goal'];
   else {
-    const pool = ['coins', 'blob', 'steps', 'bats', 'star', 'twoblob', 'feather', 'bats', 'twoblob', 'blob'];
+    // Sværhedsgrad: jo højere kapitel, jo flere svære paneler og jo færre power-ups.
+    const pool = ['blob', 'steps', 'bats', 'twoblob', 'bats', 'twoblob', 'blob', 'feather', 'star'];
+    if (n < 7) pool.push('coins', 'coins');
+    if (n < 6) pool.push('star');
+    if (n >= 4) pool.push('storm');
+    if (n >= 6) pool.push('storm');
+    if (n >= 5) pool.push('trio');
+    if (n >= 7) pool.push('trio');
     seq = ['start'];
-    const mids = 3 + Math.min(n, 5);
+    const mids = 3 + Math.min(n, 7);
     let prev = '';
     for (let i = 0; i < mids; i++) { let t; do t = pick(pool); while (t === prev); seq.push(t); prev = t; }
     seq.push('goal');
@@ -159,10 +168,15 @@ function buildLevel(n) {
 }
 
 function fillPanel(L, type, ox, n) {
+  // d = sværhedsgrad. Den stiger med kapitlet, men stopper ved kapitel 12, så spillet ikke bliver umuligt.
+  const d = Math.min(n, 12);
   const C = (x, y) => L.coins.push({ x: ox + x, y, ph: Math.random() * 6, taken: false });
   const P = (x, y, w) => L.plats.push({ x: ox + x, y, w });
-  const B = (x0, x1) => L.monsters.push({ type: 'blob', x: ox + (x0 + x1) / 2, y: GROUND, min: ox + x0, max: ox + x1, vx: (70 + n * 10) * (Math.random() < .5 ? -1 : 1), alive: true, t: Math.random() * 6 });
-  const F = (x0, x1, y) => L.monsters.push({ type: 'bat', x: ox + (x0 + x1) / 2, y, base: y, min: ox + x0, max: ox + x1, vx: 90 + n * 10, alive: true, t: Math.random() * 6 });
+  // fra kapitel 4 kan nogle Blobboer hoppe (de er lyserøde)
+  const B = (x0, x1) => L.monsters.push({ type: 'blob', x: ox + (x0 + x1) / 2, y: GROUND, min: ox + x0, max: ox + x1, vx: (70 + d * 12) * (Math.random() < .5 ? -1 : 1), alive: true, t: Math.random() * 6,
+    hop: n >= 4 && Math.random() < Math.min(.15 * (n - 3), .6), hopT: rand(.8, 2), vy: 0 });
+  const F = (x0, x1, y) => L.monsters.push({ type: 'bat', x: ox + (x0 + x1) / 2, y, base: y, min: ox + x0, max: ox + x1, vx: 90 + d * 12, alive: true, t: Math.random() * 6,
+    amp: 40 + Math.min(d, 10) * 4, freq: 3 + d * .12 });
   const I = (kind, x, y) => L.items.push({ kind, x: ox + x, y, taken: false });
   const V = (id, x) => L.friends.push(newFriend(id, ox + x));
   switch (type) {
@@ -173,10 +187,14 @@ function fillPanel(L, type, ox, n) {
     case 'twoblob': B(60, 400); B(520, 900); P(380, 330, 170); C(420, 296); C(465, 296); C(510, 296); break;
     case 'bats': P(200, 350, 180); C(250, 316); C(290, 316); C(330, 316); F(420, 880, 300); C(600, 440); C(660, 440); C(720, 440); break;
     case 'star': P(370, 330, 190); I('star', 465, 300); C(150, 440); C(210, 440); if (n > 1) B(600, 900); break;
-    case 'feather': I('feather', 260, 430); P(560, 300, 150); P(740, 170, 150); C(635, 266); C(815, 136); C(815, 90); if (n >= 3) I('heart', 635, 236); break;
+    case 'feather': I('feather', 260, 430); P(560, 300, 150); P(740, 170, 150); C(635, 266); C(815, 136); C(815, 90); if (n >= 3 && (n < 8 || Math.random() < .5)) I('heart', 635, 236); break;
+    case 'storm': P(330, 360, 200); C(380, 326); C(430, 326); C(480, 326); F(100, 520, 220); F(440, 880, 330); C(700, 440); C(760, 440); break;
+    case 'trio': B(40, 320); B(330, 610); B(620, 900); P(140, 320, 160); P(560, 320, 160); C(190, 286); C(240, 286); C(610, 286); C(660, 286); break;
     case 'friend': V(friendFor(n), 640); P(180, 350, 200); C(220, 316); C(280, 316); C(340, 316); C(440, 440); C(500, 440); break;
     case 'goal': L.goal = ox + 700; C(300, 440); C(360, 440); C(420, 440); if (n > 2) F(100, 600, 280); break;
   }
+  // fra kapitel 5 kan der komme et ekstra Tordenpust i de rolige paneler
+  if (n >= 5 && ['coins', 'steps', 'star', 'feather'].includes(type) && Math.random() < Math.min(.12 * (n - 4), .6)) F(120, 860, rand(200, 280));
 }
 
 function newFriend(id, x) {
@@ -325,7 +343,12 @@ function update(dt) {
     m.x += m.vx * dt;
     if (m.x < m.min) { m.x = m.min; m.vx = Math.abs(m.vx); }
     if (m.x > m.max) { m.x = m.max; m.vx = -Math.abs(m.vx); }
-    if (m.type === 'bat') m.y = m.base + Math.sin(m.t * 3) * 40;
+    if (m.type === 'bat') m.y = m.base + Math.sin(m.t * m.freq) * m.amp;
+    if (m.hop) {
+      m.hopT -= dt;
+      if (m.hopT <= 0 && m.y >= GROUND) { m.vy = -640; m.hopT = rand(1.4, 2.4); }
+      m.vy += G * dt; m.y = Math.min(GROUND, m.y + m.vy * dt); if (m.y >= GROUND) m.vy = 0;
+    }
     const my = m.type === 'blob' ? m.y - 28 : m.y, r = m.type === 'blob' ? 30 : 24;
     if (endTimer > 0) continue;
     if (Math.abs(m.x - p.x) < 26 + r * .8 && Math.abs(my - (p.y - 34)) < 30 + r * .8) {
@@ -525,7 +548,8 @@ function drawBlob(m) {
   const sq = Math.sin(m.t * 8) * .06, dir = Math.sign(player.x - m.x) || 1;
   ctx.save(); ctx.translate(m.x, m.y); ctx.scale(1 + sq, 1 - sq);
   ctx.beginPath(); ctx.moveTo(-34, 0); ctx.bezierCurveTo(-38, -42, -20, -58, 0, -58); ctx.bezierCurveTo(20, -58, 38, -42, 34, 0); ctx.closePath();
-  const g = ctx.createLinearGradient(0, -58, 0, 0); g.addColorStop(0, '#dccdff'); g.addColorStop(1, '#a98cf7');
+  const g = ctx.createLinearGradient(0, -58, 0, 0);
+  if (m.hop) { g.addColorStop(0, '#ffd6ea'); g.addColorStop(1, '#ff8cc0'); } else { g.addColorStop(0, '#dccdff'); g.addColorStop(1, '#a98cf7'); }
   ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
   // lille spire
   ctx.beginPath(); ctx.moveTo(0, -58); ctx.quadraticCurveTo(3, -68, 0, -72); ctx.lineWidth = 2.5; ctx.stroke();
@@ -967,7 +991,7 @@ function chapterDone() {
   state = 'done'; sfx.win();
   save.coins += runCoins; save.best = Math.max(save.best, chapter + 1); persist();
   $('doneText').textContent = `Du samlede ${runCoins} sølvmønter${bops ? ` og lavede ${bops} × KAPOW` : ''}. Nu har du ${save.coins} mønter i alt.` +
-    (newFriendId ? ` ${FR[newFriendId].name} er flyttet ind i Mangaby!` : '');
+    (newFriendId ? ` ${FR[newFriendId].name} er flyttet ind i Mangaby!` : '') + ' Næste kapitel bliver lidt sværere!';
   $('btnNext').textContent = `Kapitel ${chapter + 1}`;
   show('done');
 }

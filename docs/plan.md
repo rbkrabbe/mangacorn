@@ -25,6 +25,15 @@
 - Huse for venner, man ikke har mødt endnu, har gråt tag, slukket lys og et "?" på skiltet.
 - Man kommer til Mangaby fra forsiden og fra skærmen, når et kapitel er klaret.
 
+## Sværere for hvert kapitel (lavet)
+- Monstrene bliver hurtigere i hvert kapitel, indtil kapitel 12.
+- Kapitlerne bliver længere, indtil kapitel 7.
+- Fra kapitel 4 kommer der nye paneler med to Tordenpust, og fra kapitel 5 paneler med tre Blobboer.
+- Fra kapitel 4 kan nogle Blobboer hoppe. De er lyserøde, så man kan se forskel.
+- Fra kapitel 5 kan der dukke et ekstra Tordenpust op i de rolige paneler.
+- Regnbuestjerner og mønt-paneler bliver sjældnere, og fra kapitel 8 er der ikke altid et hjerte.
+- Vennens panel er altid uden monstre.
+
 ## Idéer til næste skridt
 - Egne tegninger af enhjørningen og monstrene.
 - Flere slags paneler: panel der vender på hovedet, mørkt panel med lommelygte, boss-panel.
