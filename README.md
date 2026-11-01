@@ -16,6 +16,10 @@ Spillet er lavet med almindelig HTML, CSS og JavaScript og tegner alt på et `<c
 
 På en touchskærm vises knapper på skærmen. Hop på monstrene ovenfra for at besejre dem.
 
+### I vandet
+
+Man synker langsomt. Tryk hop for at svømme op, og ↓ eller S for at dykke hurtigere. Find havfruehalen på havbunden ved øen, så kommer den frem, hver gang man er i vandet.
+
 ### To spillere
 
 Vælg "2 spillere" på forsiden. Spiller 1 styrer med <kbd>A</kbd> <kbd>D</kbd> <kbd>W</kbd>, spiller 2 med <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd>. På en touchskærm har spiller 1 knapperne til venstre og spiller 2 knapperne til højre.
@@ -41,6 +45,7 @@ docs/plan.md      Plan og idéer til spillet
 - `buildLevel` og `fillPanel` – hvordan kapitler og paneler bygges, og hvad der er i hvert panel. Sværhedsgraden for hvert kapitel bestemmes også her (`pool` og `d`).
 - `FRIENDS` – vennerne (navn, farver, pynt, hvad de siger). `friendFor` bestemmer, hvilken ven der er i hvert kapitel.
 - `buildTown`, `drawHouse` og `drawTownDeco` – byen Mangaby, husene og skiltene.
+- `SURF`, `SEA_FLOOR`, `updateMermaid`, `drawSeaPanel`, `drawMermaid` og `drawMerTail` – havet, havfruen Marina og havfruehalen. `TAIL_COLORS` og `FIN_COLOR` er halens farver.
 - `CAPTIONS` – teksterne øverst i panelerne.
 - `drawUnicorn`, `drawBlob`, `drawBat`, `drawSpiky`, `drawGhost`, `drawBubbler`, `drawCoin` – tegningen af enhjørningen, monstrene og mønterne.
 - `ACC`, `MAXV`, `G`, `JV` – hvor hurtigt enhjørningen løber, og hvor højt den hopper.
@@ -48,7 +53,7 @@ docs/plan.md      Plan og idéer til spillet
 
 ## Gemte data
 
-Mønter, købte ting, venner man har mødt, og hvilket kapitel man er nået til gemmes i browserens `localStorage` under nøglen `mangacorn-v1`. Det ligger kun i den browser, man spiller i.
+Mønter, købte ting, venner man har mødt, om man har havfruehalen, og hvilket kapitel man er nået til gemmes i browserens `localStorage` under nøglen `mangacorn-v1`. Det ligger kun i den browser, man spiller i.
 
 ## Dele spillet
 

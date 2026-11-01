@@ -5,6 +5,9 @@ const cv = document.getElementById('game');
 const ctx = cv.getContext('2d');
 const stage = document.getElementById('stage');
 const W = 960, H = 540, PW = 960, GUT = 20, GROUND = 468;
+// Havet: vandoverfladen ligger i samme højde som jorden, og havbunden ligger langt nede.
+// Kameraet glider ned, når man dykker.
+const SURF = GROUND, SEA_FLOOR = 880, SEA_BOTTOM = 900;
 const INK = '#16131c', PAPER = '#fbfaff';
 const TINTS = ['#d8ecff', '#ffe0ee', '#e6defd', '#dcf6e7', '#fff1c9', '#ffe3d2'];
 const NAMES = ['Skyskoven', 'Bobletårnet', 'Slikmarkedet', 'Regnbuebroen', 'Månebyen', 'Monstermosen'];
@@ -33,7 +36,7 @@ const tone = ctx.createPattern(toneCanvas, 'repeat');
 
 // ---------- Gem / hent ----------
 const SAVE_KEY = 'mangacorn-v1';
-let save = { coins: 0, owned: [], worn: [], best: 1, friends: [], players: 1 };
+let save = { coins: 0, owned: [], worn: [], best: 1, friends: [], players: 1, tail: false };
 try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && typeof s === 'object') save = Object.assign(save, s); } catch (e) {}
 if (!Array.isArray(save.friends)) save.friends = [];
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
@@ -108,6 +111,8 @@ const sfx = {
   jump() { beep(380, .16, 'square', .035, 760); },
   jump2() { beep(620, .16, 'triangle', .05, 1240); },
   pop() { beep(900, .14, 'sine', .07, 260); noise(.08, .06); },
+  splash() { noise(.25, .12); beep(240, .2, 'sine', .05, 120); },
+  swim() { beep(420, .09, 'sine', .04, 720); },
   blow() { beep(300, .18, 'sine', .04, 600); },
   hello() { [784, 988, 1175].forEach((f, i) => beep(f, .1, 'sine', .06, 0, i * .08)); },
   door() { beep(520, .1, 'triangle', .06, 0); beep(780, .14, 'triangle', .06, 0, .09); },
@@ -130,6 +135,8 @@ const CAPTIONS = {
   spiky: () => 'Piggi har pigge! Hop over den',
   ghost: () => 'Bøh! Et lille spøgelse følger efter dig',
   bubbler: () => 'Boblo puster bobler. Hop på dem!',
+  island: () => 'En lille ø midt i havet…',
+  sea: () => save.tail ? 'Hop i vandet med din havfruehale!' : 'Dyk ned i havet!',
   star: () => 'En regnbuestjerne gør dig uovervindelig',
   feather: () => 'En sky-fjer giver dobbelthop',
   goal: () => 'Løb videre til næste side!',
@@ -154,6 +161,7 @@ function buildLevel(n) {
     if (n >= 3) pool.push('spiky');
     if (n >= 4) pool.push('ghost');
     if (n >= 5) pool.push('bubbler');
+    if (n >= 4) pool.push('sea');
     seq = ['start'];
     const mids = 3 + Math.min(n, 7);
     let prev = '';
@@ -165,15 +173,19 @@ function buildLevel(n) {
   }
   // en ven står i et panel midt i kapitlet
   seq.splice(n === 1 ? 2 : Math.ceil(seq.length / 2), 0, 'friend');
-  const L = { panels: [], coins: [], monsters: [], plats: [], items: [], friends: [], doors: [], houses: [], deco: [], goal: 0, width: seq.length * PW, n };
+  // havfrue-øen: fra kapitel 3, indtil man har fået havfruehalen
+  if (n >= 3 && !save.tail) seq.splice(seq.length - 1, 0, 'island');
+  const L = { panels: [], coins: [], monsters: [], plats: [], items: [], friends: [], doors: [], houses: [], deco: [], seas: [], mermaid: null, goal: 0, width: seq.length * PW, n };
   seq.forEach((type, p) => {
     const x = p * PW + GUT, w = PW - 2 * GUT;
-    const bg = type === 'start' ? 'sky' : type === 'goal' ? 'burst' : ['speed', 'tone', 'sky', 'burst'][(p + n) % 4];
+    const sea = type === 'island' || type === 'sea';
+    const bg = type === 'start' || sea ? 'sky' : type === 'goal' ? 'burst' : ['speed', 'tone', 'sky', 'burst'][(p + n) % 4];
     const deco = { lines: [], rays: [], clouds: [] };
     for (let i = 0; i < 46; i++) deco.lines.push({ x: rand(-200, w), y: rand(40, GROUND - 16), len: rand(90, 380), lw: rand(1, 2.6) });
     for (let i = 0; i < 110; i++) deco.rays.push({ a: i / 110 * Math.PI * 2 + rand(-.01, .01), r: rand(190, 280), wd: rand(.004, .013) });
     for (let i = 0; i < 3; i++) deco.clouds.push({ x: rand(60, w - 170), y: rand(80, 210), s: rand(.8, 1.4) });
-    L.panels.push({ x, w, type, bg, deco, caption: CAPTIONS[type](n) });
+    if (sea) deco.weeds = [0, 1, 2, 3, 4, 5].map(i => ({ x: 200 + i * 95 + rand(-20, 20), h: rand(50, 110) }));
+    L.panels.push({ x, w, type, bg, deco, sea, caption: CAPTIONS[type](n) });
     fillPanel(L, type, x, n);
   });
   return L;
@@ -208,6 +220,22 @@ function fillPanel(L, type, ox, n) {
     case 'spiky': S(300, 880); P(420, 330, 170); C(460, 296); C(505, 296); C(550, 296); C(150, 440); C(210, 440); if (n >= 6) B(60, 300); break;
     case 'ghost': Gh(120, 880, 330); P(220, 360, 180); C(260, 326); C(310, 326); C(360, 326); for (let i = 0; i < 4; i++) C(560 + i * 60, 440); break;
     case 'bubbler': Q(790, GROUND - 46); P(300, 330, 180); C(340, 296); C(390, 296); C(440, 296); C(160, 440); C(560, 440); break;
+    case 'island': {
+      // havet går fra x 170 til 750; øen ligger midt i, og muslingen med havfruehalen ligger på bunden
+      L.seas.push({ x0: ox + 170, x1: ox + 750, floor: SEA_FLOOR });
+      L.plats.push({ x: ox + 360, y: 404, w: 190, kind: 'island' });
+      L.mermaid = { x: ox + 650, y: SURF + 90, state: 'hidden', t: 0, say: null, queue: [], ix0: ox + 360, ix1: ox + 550, shell: { x: ox + 640, y: SEA_FLOOR - 24 } };
+      C(90, 440); C(415, 370); C(495, 370);
+      C(240, 560); C(255, 640); C(280, 720); C(320, 800); C(560, 820); C(600, 740);
+      break;
+    }
+    case 'sea':
+      L.seas.push({ x0: ox + 170, x1: ox + 750, floor: SEA_FLOOR });
+      L.plats.push({ x: ox + 380, y: 404, w: 150, kind: 'island' });
+      for (let i = 0; i < 6; i++) C(240 + i * 85, 560 + Math.sin(i / 5 * Math.PI) * 220);
+      C(430, 370); C(480, 370);
+      if (n >= 5) Q(560, 640);
+      break;
     case 'trio': B(40, 320); B(330, 610); B(620, 900); P(140, 320, 160); P(560, 320, 160); C(190, 286); C(240, 286); C(610, 286); C(660, 286); break;
     case 'friend': V(friendFor(n), 640); P(180, 350, 200); C(220, 316); C(280, 316); C(340, 316); C(440, 440); C(500, 440); break;
     case 'goal': L.goal = ox + 700; C(300, 440); C(360, 440); C(420, 440); if (n > 2) F(100, 600, 280); break;
@@ -223,7 +251,7 @@ function newFriend(id, x) {
 // ---------- Mangaby: den lille by mellem kapitlerne ----------
 const TOWN_CAPTIONS = ['Velkommen til Mangaby!', 'Her bor dine venner', 'Ud på eventyr igen!'];
 function buildTown() {
-  const L = { panels: [], coins: [], monsters: [], plats: [], items: [], friends: [], doors: [], houses: [], deco: [], goal: 0, width: 3 * PW, n: 1, town: true };
+  const L = { panels: [], coins: [], monsters: [], plats: [], items: [], friends: [], doors: [], houses: [], deco: [], seas: [], mermaid: null, goal: 0, width: 3 * PW, n: 1, town: true };
   for (let p = 0; p < 3; p++) {
     const x = p * PW + GUT, w = PW - 2 * GUT;
     const deco = { lines: [], rays: [], clouds: [] };
@@ -248,8 +276,8 @@ function buildTown() {
 }
 
 // ---------- Spiltilstand ----------
-let state = 'title', chapter = save.best, level = buildLevel(chapter), player, players = [], cam = { x: 0, shake: 0 };
-let fx = [], particles = [], runCoins = 0, bops = 0, time = 0, speech = null, endTimer = 0, newFriendId = null, nearDoor = null;
+let state = 'title', chapter = save.best, level = buildLevel(chapter), player, players = [], cam = { x: 0, y: 0, shake: 0 };
+let fx = [], particles = [], runCoins = 0, bops = 0, time = 0, speech = null, endTimer = 0, newFriendId = null, nearDoor = null, gotTail = false;
 const ACC = 2600, MAXV = 330, FRICT = 2400, G = 2200, JV = 820;
 
 // Spiller 2 er en lyseblå enhjørning, så man kan se forskel.
@@ -274,6 +302,9 @@ function nearestPlayer(x) {
   for (const p of active()) if (!best || Math.abs(p.x - x) < Math.abs(best.x - x)) best = p;
   return best || player;
 }
+
+function seaAt(x) { for (const sz of level.seas || []) if (x > sz.x0 && x < sz.x1) return sz; return null; }
+function groundAt(x) { const sz = seaAt(x); return sz ? sz.floor : GROUND; }
 
 // ---------- Input ----------
 const keys = {}; const touches = [{ left: false, right: false, jump: false }, { left: false, right: false, jump: false }], touch = touches[0];
@@ -314,9 +345,9 @@ function sparkle(x, y, n, colors, speed = 260) {
 // ---------- Opdatering ----------
 // Hvilke taster styrer hvilken spiller. Med én spiller virker alle taster.
 function controls(p) {
-  if (players.length < 2) return { left: keys.arrowleft || keys.a || touch.left, right: keys.arrowright || keys.d || touch.right, held: keys[' '] || keys.arrowup || keys.w || touch.jump };
-  if (p.idx === 0) return { left: keys.a || touch.left, right: keys.d || touch.right, held: keys[' '] || keys.w || touch.jump };
-  return { left: keys.arrowleft || touches[1].left, right: keys.arrowright || touches[1].right, held: keys.arrowup || touches[1].jump };
+  if (players.length < 2) return { left: keys.arrowleft || keys.a || touch.left, right: keys.arrowright || keys.d || touch.right, held: keys[' '] || keys.arrowup || keys.w || touch.jump, down: keys.arrowdown || keys.s };
+  if (p.idx === 0) return { left: keys.a || touch.left, right: keys.d || touch.right, held: keys[' '] || keys.w || touch.jump, down: keys.s };
+  return { left: keys.arrowleft || touches[1].left, right: keys.arrowright || touches[1].right, held: keys.arrowup || touches[1].jump, down: keys.arrowdown };
 }
 
 function update(dt) {
@@ -343,11 +374,20 @@ function updateOut(p, dt) {
 }
 
 function updatePlayer(p, dt) {
-  const L = level, { left, right, held } = controls(p);
+  const L = level, { left, right, held, down } = controls(p);
   if (jumpQueued[p.idx]) { p.buffer = .13; jumpQueued[p.idx] = false; } else p.buffer -= dt;
 
+  // i vandet? Så svømmer man: man synker langsomt, og hop er et svømmetag op
+  const sz = seaAt(p.x), wet = !!sz && p.y > SURF + 6;
+  if (wet && !p.wet) {
+    if (p.vy > 150) { burst(p.x, SURF - 20, 'PLASK!', { size: .5, fill: '#dff3ff', color: '#3a8fe0', life: .6 }); sfx.splash(); }
+    for (let i = 0; i < 10; i++) particles.push({ x: p.x + rand(-30, 30), y: SURF, vx: rand(-120, 120), vy: rand(-320, -120), life: .6, t: 0, c: '#bfe6ff', size: rand(5, 9) });
+  }
+  p.wet = wet;
+  const fins = wet && save.tail;
+
   const dir = (right ? 1 : 0) - (left ? 1 : 0);
-  const maxv = MAXV * (p.star > 0 ? 1.3 : 1);
+  const maxv = MAXV * (p.star > 0 ? 1.3 : 1) * (wet ? (fins ? 1.15 : .65) : 1);
   if (endTimer > 0) { /* frosset mens "Åh nej" vises */ }
   else if (dir) { p.vx += dir * ACC * dt; p.face = dir; }
   else { const f = FRICT * dt; p.vx = Math.abs(p.vx) <= f ? 0 : p.vx - Math.sign(p.vx) * f; }
@@ -355,20 +395,33 @@ function updatePlayer(p, dt) {
   if (Math.abs(p.vx) > maxv && dir) p.vx = clamp(p.vx, -maxv, maxv);
 
   p.coyote = p.onGround ? .1 : p.coyote - dt;
-  if (p.buffer > 0 && endTimer <= 0) {
+  if (wet) {
+    if (p.buffer > 0 && endTimer <= 0) {
+      // svømmetag. Tæt på overfladen hopper man helt op af vandet
+      p.vy = p.y < SURF + 50 ? -JV * .8 : -(fins ? 470 : 340); p.buffer = 0; sfx.swim();
+      for (let i = 0; i < 4; i++) particles.push({ x: p.x + rand(-20, 20), y: p.y - rand(20, 60), vx: rand(-20, 20), vy: rand(-80, -30), life: .9, t: 0, c: '#ffffff', size: rand(5, 9), bub: true });
+    }
+    p.vy = Math.min(p.vy + G * .22 * dt, down ? 360 : 140);
+    if (Math.random() < dt * 2) particles.push({ x: p.x + p.face * 40, y: p.y - 60, vx: 0, vy: -60, life: 1.2, t: 0, c: '#ffffff', size: rand(4, 7), bub: true });
+  } else if (p.buffer > 0 && endTimer <= 0) {
     if (p.coyote > 0) { p.vy = -JV; p.onGround = false; p.coyote = 0; p.jumps = 1; p.buffer = 0; sfx.jump(); }
     else if ((p.dbl || p.feather) && p.jumps < 2) { p.vy = -JV * .92; p.jumps = 2; p.buffer = 0; sfx.jump2();
       sparkle(p.x, p.y - 10, 10, ['#ffffff', '#cfe8ff', '#ffd6ea'], 200); }
   }
-  if (!held && p.vy < -250) p.vy += G * dt * 1.4;
-  p.vy = Math.min(p.vy + G * dt, 1400);
+  if (!wet) {
+    if (!held && p.vy < -250) p.vy += G * dt * 1.4;
+    p.vy = Math.min(p.vy + G * dt, 1400);
+  }
 
   const prevY = p.y, wasGround = p.onGround;
   p.x += p.vx * dt; p.y += p.vy * dt;
   p.x = clamp(p.x, GUT + 34, L.width - GUT - 34);
+  // under vandet kan man ikke svømme ind i klipperne på siderne
+  if (sz && p.y > SURF + 12) p.x = clamp(p.x, sz.x0 + 26, sz.x1 - 26);
   p.onGround = false;
   const land = yy => { p.y = yy; if (!wasGround && p.vy > 450) p.squash = .2; p.vy = 0; p.onGround = true; };
-  if (p.y >= GROUND) land(GROUND);
+  const gy = groundAt(p.x);
+  if (p.y >= gy) land(gy);
   for (const pl of L.plats) {
     if (p.vy >= 0 && prevY <= pl.y + 1 && p.y >= pl.y && p.x + 18 > pl.x && p.x - 18 < pl.x + pl.w) land(pl.y);
   }
@@ -426,7 +479,7 @@ function updateWorld(dt) {
     }
     if (m.type === 'bubble') {
       m.y = m.base + Math.sin(m.t * 5) * 7; m.life -= dt;
-      if (m.life <= 0 || m.x < 0 || m.x > L.width) { m.alive = false; continue; }
+      if (m.life <= 0 || m.x < 0 || m.x > L.width || (m.y > SURF && !seaAt(m.x) && L.seas.length)) { m.alive = false; continue; }
     }
     if (m.hop) {
       m.hopT -= dt;
@@ -448,6 +501,7 @@ function updateWorld(dt) {
   }
   // venner
   for (const f of L.friends) updateFriend(f, dt);
+  if (L.mermaid) updateMermaid(L.mermaid, dt);
   // døre i byen
   const door = L.doors.find(d => active().some(q => Math.abs(q.x - d.x) < 60 && q.onGround)) || null;
   if (door !== nearDoor) { nearDoor = door; $('enterWrap').hidden = !door; }
@@ -465,6 +519,10 @@ function updateWorld(dt) {
     }
   }
   const target = clamp(panelX, 0, L.width - W);
+  // når man dykker, glider kameraet ned under vandet
+  const deep = active().filter(q => seaAt(q.x) && q.y > SURF);
+  const ty = deep.length ? clamp(Math.max(...deep.map(q => q.y)) - 330, 0, SEA_BOTTOM + 20 - H) : 0;
+  cam.y += (ty - cam.y) * Math.min(1, dt * 5);
   cam.x += (target - cam.x) * Math.min(1, dt * 7);
   cam.shake = Math.max(0, cam.shake - dt * 40);
   if (speech) { speech.t -= dt; if (speech.t <= 0) speech = null; }
@@ -489,6 +547,29 @@ function updateFriend(f, dt) {
   if (isNew) { save.friends.push(f.id); newFriendId = f.id; persist(); }
   f.say = { text: isNew ? fr.hello : `Hej igen! Det er ${fr.name}!`, t: 2.2 };
   f.queue = isNew ? ['Her er en gave til dig!', 'Besøg mig i Mangaby!'] : ['Her er en gave til dig!'];
+}
+
+// Havfruen Marina: dukker op, når man står på øen eller hopper i vandet,
+// og fortæller, at havfruehalen ligger i muslingen på bunden.
+function updateMermaid(mm, dt) {
+  mm.t += dt;
+  const act = active();
+  if (mm.state === 'hidden' && act.some(q => (q.onGround && q.y < SURF - 20 && q.x > mm.ix0 && q.x < mm.ix1) || q.wet)) {
+    mm.state = 'up'; sfx.hello(); speech = null;
+    mm.say = { text: 'Hej! Jeg er Marina, havfruen!', t: 2.4 };
+    mm.queue = ['Dyk ned og find havfruehalen!', 'Den ligger i den lyserøde musling!'];
+  }
+  const ty = mm.state === 'hidden' ? SURF + 90 : SURF + 6 + Math.sin(mm.t * 2) * 5;
+  mm.y += (ty - mm.y) * Math.min(1, dt * 3);
+  if (mm.say) { mm.say.t -= dt; if (mm.say.t <= 0) mm.say = mm.queue.length ? { text: mm.queue.shift(), t: 2.6 } : null; }
+  // muslingen på bunden
+  const sh = mm.shell;
+  if (!save.tail && act.some(q => Math.hypot(q.x - sh.x, (q.y - 34) - sh.y) < 64)) {
+    save.tail = true; gotTail = true; persist(); sfx.win();
+    burst(sh.x, sh.y - 90, 'HAVFRUEHALE!', { size: .75, fill: '#c8fff6', color: '#7a4dff', life: 1.4 });
+    sparkle(sh.x, sh.y - 30, 26, ['#3fd6c6', '#8a6cff', '#ff9ecb', '#ffffff'], 360);
+    mm.state = 'up'; mm.say = { text: 'Sådan! Nu har du en havfruehale!', t: 2.6 }; mm.queue = ['Den kommer frem, når du er i vandet!'];
+  }
 }
 
 function defeat(m, my) {
@@ -528,7 +609,7 @@ function hurt(m, p = player) {
 function tickEffects(dt) {
   for (const f of fx) f.t += dt;
   fx = fx.filter(f => f.t < f.life);
-  for (const q of particles) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 600 * dt; }
+  for (const q of particles) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += (q.bub ? -30 : 600) * dt; if (q.bub && q.y < SURF + 4) q.t = q.life; }
   particles = particles.filter(q => q.t < q.life);
 }
 
@@ -571,6 +652,7 @@ function drawCoin(c, x, y, r, t, ph) {
 }
 
 function drawPanel(pn) {
+  if (pn.sea) { drawSeaPanel(pn); return; }
   const x = pn.x, y = GUT, w = pn.w, h = H - 2 * GUT, d = pn.deco;
   const tint = TINTS[(level.n - 1) % TINTS.length];
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
@@ -767,6 +849,161 @@ function drawBubbleShot(m) {
   ctx.beginPath(); ctx.arc(6, 6, 2.5, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
   ctx.restore();
 }
+// Havfruehalen: turkis til lilla med skæl og en lyserød halefinne. Den vifter, når man svømmer.
+const TAIL_COLORS = ['#3fd6c6', '#8a6cff'], FIN_COLOR = '#ff9ecb';
+function drawMerTail(c, t) {
+  const wv = Math.sin(t * 7) * 7;
+  c.save(); c.lineJoin = 'round'; c.strokeStyle = INK;
+  // halefinne
+  c.beginPath(); c.moveTo(-44, -20 + wv * .8);
+  c.quadraticCurveTo(-58, -44 + wv, -74, -36 + wv); c.quadraticCurveTo(-62, -24 + wv, -74, -8 + wv);
+  c.quadraticCurveTo(-58, -6 + wv, -44, -14 + wv * .8); c.closePath();
+  c.fillStyle = FIN_COLOR; c.fill(); c.lineWidth = 3; c.stroke();
+  c.beginPath(); c.moveTo(-48, -17 + wv * .8); c.lineTo(-66, -32 + wv); c.moveTo(-48, -17 + wv * .8); c.lineTo(-66, -13 + wv); c.lineWidth = 1.6; c.stroke();
+  // selve halen
+  c.beginPath(); c.moveTo(24, -36); c.quadraticCurveTo(24, -6, -2, -6);
+  c.quadraticCurveTo(-28, -6 + wv * .4, -46, -12 + wv * .8); c.lineTo(-44, -24 + wv * .8);
+  c.quadraticCurveTo(-26, -22 + wv * .3, -18, -36); c.closePath();
+  const g = c.createLinearGradient(24, -20, -46, -16); g.addColorStop(0, TAIL_COLORS[0]); g.addColorStop(1, TAIL_COLORS[1]);
+  c.fillStyle = g; c.fill(); c.lineWidth = 3; c.stroke();
+  // skæl
+  c.save(); c.clip(); c.strokeStyle = 'rgba(255,255,255,.65)'; c.lineWidth = 1.6;
+  for (let i = 0; i < 6; i++) for (let j = 0; j < 2; j++) { c.beginPath(); c.arc(14 - i * 10 + j * 5, -26 + j * 9 + i * 1.2 + (i > 2 ? wv * .3 : 0), 5, .2, Math.PI - .2); c.stroke(); }
+  c.restore();
+  c.restore();
+}
+// Muslingen på havbunden. Før man har fået halen, ligger halen og glimter i den.
+function drawShell(sh) {
+  const x = sh.x, y = sh.y + 24, open = .55 + Math.sin(time * 2) * .08;
+  ctx.save(); ctx.lineJoin = 'round'; ctx.strokeStyle = INK; ctx.translate(x, y);
+  if (!save.tail) {
+    const glow = ctx.createRadialGradient(0, -30, 4, 0, -30, 80); glow.addColorStop(0, 'rgba(255,255,255,.9)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, -30, 80, 0, 7); ctx.fill();
+  }
+  // nederste skal
+  ctx.beginPath(); ctx.moveTo(-40, -6); ctx.quadraticCurveTo(0, 12, 40, -6); ctx.quadraticCurveTo(0, -18, -40, -6); ctx.closePath();
+  ctx.fillStyle = '#ffb4d6'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  // det, der ligger i muslingen
+  if (!save.tail) {
+    ctx.save(); ctx.translate(-6, -14); ctx.scale(.55, .55); drawMerTail(ctx, time); ctx.restore();
+    starPath(ctx, 18, -40 + Math.sin(time * 4) * 3, 7, 3); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 1.6; ctx.stroke();
+  } else { ctx.beginPath(); ctx.arc(0, -12, 9, 0, 7); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke(); }
+  // låget
+  ctx.save(); ctx.translate(-38, -8); ctx.rotate(-open);
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(38, -40, 78, 0); ctx.quadraticCurveTo(38, -10, 0, 0); ctx.closePath();
+  ctx.fillStyle = '#ff9ecb'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  for (const k of [.3, .5, .7]) { ctx.beginPath(); ctx.moveTo(78 * k, -4); ctx.lineTo(39, -26); ctx.lineWidth = 1.5; ctx.stroke(); }
+  ctx.restore();
+  ctx.restore();
+}
+// Havfruen Marina (chibi-stil). Origo = vandoverfladen ved hendes mave.
+function drawMermaid(mm) {
+  if (mm.state === 'hidden') return;
+  const dir = Math.sign(nearestPlayer(mm.x).x - mm.x) || -1, wv = Math.sin(mm.t * 3) * 5;
+  ctx.save(); ctx.translate(mm.x, mm.y); ctx.scale(dir, 1); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = INK;
+  // hale under vandet
+  ctx.beginPath(); ctx.moveTo(-14, -6); ctx.quadraticCurveTo(-18, 40, -4 + wv, 70); ctx.lineTo(10 + wv, 68); ctx.quadraticCurveTo(18, 36, 14, -6); ctx.closePath();
+  ctx.fillStyle = '#ff9ecb'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(2 + wv, 68); ctx.quadraticCurveTo(-20 + wv, 80, -24 + wv, 96); ctx.quadraticCurveTo(0 + wv, 86, 4 + wv, 78); ctx.quadraticCurveTo(10 + wv, 88, 30 + wv, 94); ctx.quadraticCurveTo(24 + wv, 78, 2 + wv, 68);
+  ctx.fillStyle = '#ffc6e2'; ctx.fill(); ctx.stroke();
+  // langt hår bagved
+  ctx.beginPath(); ctx.moveTo(-20, -60); ctx.quadraticCurveTo(-36, -20, -24 + wv * .5, 6); ctx.lineTo(18 + wv * .3, 2); ctx.quadraticCurveTo(26, -30, 18, -62); ctx.closePath();
+  ctx.fillStyle = '#ff8fb8'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  // krop med en lilla trøje
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-13, -30, 26, 28, 8) : ctx.rect(-13, -30, 26, 28);
+  ctx.fillStyle = '#c9a2ff'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-6, -22); ctx.lineTo(6, -22); ctx.lineWidth = 2; ctx.stroke();
+  // vinkende arm
+  ctx.beginPath(); ctx.moveTo(12, -24); ctx.quadraticCurveTo(26, -34, 28, -48 + Math.sin(mm.t * 6) * 4); ctx.lineWidth = 7; ctx.stroke(); ctx.lineWidth = 4; ctx.strokeStyle = '#ffe0cc'; ctx.stroke(); ctx.strokeStyle = INK;
+  // hoved
+  ctx.beginPath(); ctx.arc(0, -48, 18, 0, 7); ctx.fillStyle = '#ffe0cc'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  // pandehår
+  ctx.beginPath(); ctx.moveTo(-19, -50); ctx.quadraticCurveTo(-14, -72, 6, -68); ctx.quadraticCurveTo(20, -66, 19, -50); ctx.quadraticCurveTo(10, -60, 2, -56); ctx.quadraticCurveTo(-8, -62, -19, -50);
+  ctx.fillStyle = '#ff8fb8'; ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+  // søstjerne i håret
+  starPath(ctx, -10, -64, 7, 3.5); ctx.fillStyle = '#ffd23f'; ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
+  // store manga-øjne
+  ctx.beginPath(); ctx.ellipse(7, -46, 4.5, 6.5, 0, 0, 7); ctx.fillStyle = INK; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(7.5, -44, 3, 4, 0, 0, 7); ctx.fillStyle = '#3fd6c6'; ctx.fill();
+  ctx.beginPath(); ctx.arc(5.8, -48.5, 1.8, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-5, -46, 4, 6, 0, 0, 7); ctx.fillStyle = INK; ctx.fill();
+  ctx.beginPath(); ctx.arc(-6, -48.5, 1.6, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-1, -36); ctx.quadraticCurveTo(2, -33, 5, -36); ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,111,174,.55)'; ctx.beginPath(); ctx.ellipse(13, -39, 4, 2.5, 0, 0, 7); ctx.ellipse(-11, -39, 4, 2.5, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
+// Øen: en sandbanke med en palme
+function drawIsland(pl) {
+  const x = pl.x, y = pl.y, w = pl.w;
+  ctx.save(); ctx.lineJoin = 'round'; ctx.strokeStyle = INK;
+  // klippe under vandet
+  ctx.beginPath(); ctx.moveTo(x + 10, y + 30); ctx.quadraticCurveTo(x + w * .3, SURF + 160, x + w * .4, SEA_FLOOR); ctx.lineTo(x + w * .65, SEA_FLOOR); ctx.quadraticCurveTo(x + w * .75, SURF + 160, x + w - 10, y + 30); ctx.closePath();
+  ctx.fillStyle = '#b9a6d9'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  // sand
+  ctx.beginPath(); ctx.moveTo(x - 14, SURF + 14); ctx.quadraticCurveTo(x + 4, y + 2, x + 30, y); ctx.lineTo(x + w - 30, y); ctx.quadraticCurveTo(x + w - 4, y + 2, x + w + 14, SURF + 14); ctx.closePath();
+  ctx.fillStyle = '#ffe3a8'; ctx.fill(); ctx.save(); ctx.clip(); ctx.globalAlpha = .4; ctx.fillStyle = tone; ctx.fillRect(x - 20, y + 30, w + 40, 60); ctx.restore();
+  ctx.lineWidth = 3; ctx.stroke();
+  // palme
+  const px = x + w * .72;
+  ctx.beginPath(); ctx.moveTo(px - 6, y + 2); ctx.quadraticCurveTo(px - 2, y - 60, px + 14, y - 110); ctx.lineTo(px + 24, y - 108); ctx.quadraticCurveTo(px + 8, y - 60, px + 8, y + 2); ctx.closePath();
+  ctx.fillStyle = '#c99b6d'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI * (.1 + i * .2) + Math.sin(time * 1.5 + i) * .05;
+    ctx.save(); ctx.translate(px + 19, y - 110); ctx.rotate(a);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(30, -18, 62, 8); ctx.quadraticCurveTo(30, -2, 0, 0); ctx.fillStyle = '#5ccf8a'; ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.restore();
+  }
+  for (const [cx, cy] of [[px + 12, y - 104], [px + 24, y - 100]]) { ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 7); ctx.fillStyle = '#8a5a3c'; ctx.fill(); ctx.lineWidth = 2; ctx.stroke(); }
+  ctx.restore();
+}
+// Hav-panelet: himmel, sandstrand i begge sider og dybt vand i midten
+function drawSeaPanel(pn) {
+  const x = pn.x, y = GUT, w = pn.w, h = SEA_BOTTOM - GUT, d = pn.deco, sz = level.seas.find(s => s.x0 >= x && s.x0 < x + w);
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const g = ctx.createLinearGradient(0, y, 0, SURF); g.addColorStop(0, '#d8ecff'); g.addColorStop(1, PAPER);
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, SURF - y);
+  ctx.save(); ctx.globalAlpha = .5; ctx.fillStyle = tone; ctx.beginPath(); ctx.arc(x + w - 120, 110, 54, 0, 7); ctx.fill(); ctx.restore();
+  ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x + w - 120, 110, 54, 0, 7); ctx.stroke();
+  for (const cl of d.clouds) cloud(ctx, x + cl.x + Math.sin(time * .3 + cl.x) * 10, cl.y, 4.2 * cl.s, '#ffffff', 2);
+  // vand
+  const wg = ctx.createLinearGradient(0, SURF, 0, SEA_FLOOR); wg.addColorStop(0, '#bfe6ff'); wg.addColorStop(1, '#5d9fe0');
+  ctx.fillStyle = wg; ctx.fillRect(sz.x0, SURF, sz.x1 - sz.x0, SEA_BOTTOM - SURF);
+  // lysstråler i vandet
+  ctx.save(); ctx.globalAlpha = .18; ctx.fillStyle = '#ffffff';
+  for (let i = 0; i < 4; i++) { const bx = sz.x0 + 80 + i * 140 + Math.sin(time * .5 + i) * 20; ctx.beginPath(); ctx.moveTo(bx, SURF); ctx.lineTo(bx + 40, SURF); ctx.lineTo(bx + 120, SEA_FLOOR); ctx.lineTo(bx + 60, SEA_FLOOR); ctx.fill(); }
+  ctx.restore();
+  // tang
+  ctx.lineCap = 'round';
+  for (const wd of d.weeds) {
+    const bx = x + wd.x, sway = Math.sin(time * 1.6 + wd.x) * 10;
+    ctx.beginPath(); ctx.moveTo(bx, SEA_FLOOR); ctx.quadraticCurveTo(bx + sway, SEA_FLOOR - wd.h / 2, bx - sway * .5, SEA_FLOOR - wd.h);
+    ctx.lineWidth = 9; ctx.strokeStyle = INK; ctx.stroke(); ctx.lineWidth = 5; ctx.strokeStyle = '#4fbf7f'; ctx.stroke();
+  }
+  // havbund
+  ctx.fillStyle = '#ffe3a8'; ctx.fillRect(sz.x0, SEA_FLOOR, sz.x1 - sz.x0, SEA_BOTTOM - SEA_FLOOR);
+  ctx.save(); ctx.globalAlpha = .45; ctx.fillStyle = tone; ctx.fillRect(sz.x0, SEA_FLOOR, sz.x1 - sz.x0, 30); ctx.restore();
+  ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sz.x0, SEA_FLOOR); ctx.lineTo(sz.x1, SEA_FLOOR); ctx.stroke();
+  // sandstrand og klipper i siderne
+  for (const [a, b] of [[x, sz.x0], [sz.x1, x + w]]) {
+    ctx.fillStyle = '#ffe3a8'; ctx.fillRect(a, SURF, b - a, SEA_BOTTOM - SURF);
+    ctx.save(); ctx.globalAlpha = .4; ctx.fillStyle = tone; ctx.fillRect(a, SURF + 40, b - a, SEA_BOTTOM - SURF); ctx.restore();
+    ctx.strokeStyle = 'rgba(22,19,28,.4)'; ctx.lineWidth = 2;
+    for (let i = a + 6; i < b - 6; i += 15) { ctx.beginPath(); ctx.moveTo(i, SURF + 7); ctx.lineTo(i + 9, SURF + 17); ctx.stroke(); }
+  }
+  ctx.strokeStyle = INK; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(x, GROUND); ctx.lineTo(sz.x0, GROUND); ctx.lineTo(sz.x0, SEA_FLOOR); ctx.moveTo(sz.x1, SEA_FLOOR); ctx.lineTo(sz.x1, GROUND); ctx.lineTo(x + w, GROUND); ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = INK; ctx.lineWidth = 6; ctx.strokeRect(x, y, w, h);
+}
+// Et lag vand foran alt, der er under overfladen, plus bølger på toppen
+function drawWaterFront(sz) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(80,160,230,.2)'; ctx.fillRect(sz.x0, SURF + 4, sz.x1 - sz.x0, SEA_FLOOR - SURF - 4);
+  ctx.beginPath(); ctx.moveTo(sz.x0, SURF);
+  for (let x = sz.x0; x <= sz.x1; x += 10) ctx.lineTo(x, SURF + Math.sin(x * .05 + time * 3) * 3);
+  ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.restore();
+}
 const MONSTER_DRAW = { blob: m => drawBlob(m), bat: m => drawBat(m), spiky: drawSpiky, ghost: drawGhost, bubbler: drawBubbler, bubble: drawBubbleShot };
 
 function drawGoal(gx, text = 'VIDERE!') {
@@ -881,9 +1118,12 @@ function drawUnicorn(c, p, t, looks, opts = {}) {
     c.beginPath(); c.moveTo(14, -46); c.quadraticCurveTo(-14, -52, -42, -38 + fl); c.lineTo(-36, -14 + fl * .6); c.quadraticCurveTo(-10, -22, 10, -30); c.closePath();
     c.fillStyle = '#ff4f6d'; c.fill(); c.lineWidth = 3; c.strokeStyle = INK; c.stroke();
   }
-  // hale
-  blob2(c, [circ(-33, -40, 9), circ(-41, -32, 8.5), circ(-39, -21, 7.5)], mc[0], 2.5);
-  c.fillStyle = mc[1]; c.beginPath(); c.arc(-41, -32, 5, 0, 7); c.fill();
+  // hale (eller havfruehale i vandet)
+  if (opts.tail) drawMerTail(c, t);
+  else {
+    blob2(c, [circ(-33, -40, 9), circ(-41, -32, 8.5), circ(-39, -21, 7.5)], mc[0], 2.5);
+    c.fillStyle = mc[1]; c.beginPath(); c.arc(-41, -32, 5, 0, 7); c.fill();
+  }
   // ben
   const leg = (x, ang, front) => {
     const fill = front ? pal.body : pal.back;
@@ -894,8 +1134,10 @@ function drawUnicorn(c, p, t, looks, opts = {}) {
     c.beginPath(); c.rect(-5, 18, 10, 7); c.fillStyle = pal.hoof; c.fill(); c.stroke();
     c.restore();
   };
-  leg(-19, sw, false); leg(13, -sw, false);
-  leg(-9, -sw, true); leg(21, sw, true);
+  if (!opts.tail) {
+    leg(-19, sw, false); leg(13, -sw, false);
+    leg(-9, -sw, true); leg(21, sw, true);
+  }
   // krop, hals, hoved, mule som én silhuet
   c.shadowBlur = 0;
   blob2(c, [ell(0, -34, 32, 19), ell(20, -50, 10, 17, -.5), circ(31, -64, 19), ell(45, -56, 11.5, 9.5)], pal.body, 3);
@@ -1084,7 +1326,7 @@ function drawPlayer(p) {
   }
   ctx.save();
   if (p.inv > 0 && Math.floor(time * 20) % 2) ctx.globalAlpha = .35;
-  drawUnicorn(ctx, p, time, save.worn, { pal, wings: p.dbl || p.feather, star: p.star > 0, bubble: p.shield });
+  drawUnicorn(ctx, p, time, save.worn, { pal, wings: p.dbl || p.feather, star: p.star > 0, bubble: p.shield, tail: p.wet && save.tail });
   ctx.restore();
 }
 
@@ -1125,7 +1367,7 @@ function draw() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
   const sx = cam.shake ? rand(-cam.shake, cam.shake) : 0, sy = cam.shake ? rand(-cam.shake, cam.shake) : 0;
-  ctx.save(); ctx.translate(-Math.round(cam.x) + sx, sy);
+  ctx.save(); ctx.translate(-Math.round(cam.x) + sx, -Math.round(cam.y) + sy);
   const L = level, vis = pn => pn.x + pn.w > cam.x - 40 && pn.x < cam.x + W + 40;
   for (const pn of L.panels) if (vis(pn)) drawPanel(pn);
   // tynd sti over mellemrummet mellem panelerne
@@ -1136,23 +1378,27 @@ function draw() {
   const nearW = (x, w) => x + w > cam.x - 60 && x < cam.x + W + 60;
   for (const d of L.deco) if (nearW(d.x - 160, 320)) drawTownDeco(d);
   for (const h of L.houses) if (nearW(h.x - 30, h.w + 60)) drawHouse(h);
-  for (const pl of L.plats) if (pl.x + pl.w > cam.x - 40 && pl.x < cam.x + W + 40) drawCloudPlat(pl);
+  for (const pl of L.plats) if (pl.x + pl.w > cam.x - 40 && pl.x < cam.x + W + 40) (pl.kind === 'island' ? drawIsland : drawCloudPlat)(pl);
   if (L.goal) drawGoal(L.goal, L.goalText);
   for (const c of L.coins) if (!c.taken && near(c)) drawCoin(ctx, c.x, c.y + Math.sin(time * 3 + c.ph) * 3, 15, time, c.ph);
   for (const it of L.items) if (!it.taken && near(it)) drawItem(it);
   for (const f of L.friends) if (near(f)) drawFriend(f);
+  if (L.mermaid && near(L.mermaid)) { drawShell(L.mermaid.shell); drawMermaid(L.mermaid); }
   for (const m of L.monsters) if (m.alive && near(m)) MONSTER_DRAW[m.type](m);
   const p = player;
   for (const q of [...players].reverse()) drawPlayer(q);
+  for (const sz of L.seas) if (nearW(sz.x0, sz.x1 - sz.x0)) drawWaterFront(sz);
   for (const q of particles) {
     ctx.save(); ctx.globalAlpha = 1 - q.t / q.life; ctx.fillStyle = q.c;
-    if (q.star) { starPath(ctx, q.x, q.y, q.size, q.size * .45); ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = INK; ctx.stroke(); }
+    if (q.bub) { ctx.beginPath(); ctx.arc(q.x, q.y, q.size * .6, 0, 7); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke(); }
+    else if (q.star) { starPath(ctx, q.x, q.y, q.size, q.size * .45); ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = INK; ctx.stroke(); }
     else { ctx.beginPath(); ctx.arc(q.x, q.y, q.size * .5, 0, 7); ctx.fill(); }
     ctx.restore();
   }
   for (const pn of L.panels) if (vis(pn)) drawCaption(pn);
   drawSpeech(p);
   for (const f of L.friends) if (f.say && near(f)) drawBubble(f.x, GROUND - f.hy, f.say.text);
+  if (L.mermaid && L.mermaid.say) drawBubble(L.mermaid.x, L.mermaid.y - 40, L.mermaid.say.text);
   for (const f of fx) (f.kind === 'burst' ? drawBurstFx : drawFloat)(f);
   ctx.restore();
   if (state === 'play' || state === 'pause') drawHUD();
@@ -1178,7 +1424,7 @@ function refreshLabels() {
 function goTitle() { state = 'title'; refreshLabels(); show('title'); }
 
 function resetRun() {
-  cam.x = 0; cam.shake = 0; runCoins = 0; bops = 0; fx = []; particles = []; endTimer = 0; newFriendId = null;
+  cam.x = 0; cam.y = 0; cam.shake = 0; runCoins = 0; bops = 0; fx = []; particles = []; endTimer = 0; newFriendId = null; gotTail = false;
   nearDoor = null; $('enterWrap').hidden = true;
   for (const k in keys) keys[k] = false;
   jumpQueued[0] = jumpQueued[1] = false;
@@ -1208,7 +1454,7 @@ function chapterDone() {
   state = 'done'; sfx.win();
   save.coins += runCoins; save.best = Math.max(save.best, chapter + 1); persist();
   $('doneText').textContent = `Du samlede ${runCoins} sølvmønter${bops ? ` og lavede ${bops} × KAPOW` : ''}. Nu har du ${save.coins} mønter i alt.` +
-    (newFriendId ? ` ${FR[newFriendId].name} er flyttet ind i Mangaby!` : '') + ' Næste kapitel bliver lidt sværere!';
+    (newFriendId ? ` ${FR[newFriendId].name} er flyttet ind i Mangaby!` : '') + (gotTail ? ' Du fik en havfruehale!' : '') + ' Næste kapitel bliver lidt sværere!';
   $('btnNext').textContent = `Kapitel ${chapter + 1}`;
   show('done');
 }
