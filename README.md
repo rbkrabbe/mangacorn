@@ -21,7 +21,7 @@ På en touchskærm vises knapper på skærmen. Hop på monstrene ovenfra for at 
 ```
 index.html        Siden der starter spillet
 src/style.css     Udseende for siden, menuerne og butikken
-src/game.js       Hele spillet: baner, enhjørning, monstre, butik og lyd
+src/game.js       Hele spillet: baner, enhjørning, venner, Mangaby, monstre, butik og lyd
 assets/           Her kan egne tegninger og lyde lægges (tom indtil videre)
 docs/plan.md      Plan og idéer til spillet
 ```
@@ -30,13 +30,15 @@ docs/plan.md      Plan og idéer til spillet
 
 - `ITEMS` – tingene i butikken (navn, pris, beskrivelse). `kind: 'look'` er pynt, `kind: 'boost'` er superkræfter, og ting med samme `slot` kan ikke bæres samtidig.
 - `buildLevel` og `fillPanel` – hvordan kapitler og paneler bygges, og hvad der er i hvert panel.
+- `FRIENDS` – vennerne (navn, farver, pynt, hvad de siger). `friendFor` bestemmer, hvilken ven der er i hvert kapitel.
+- `buildTown`, `drawHouse` og `drawTownDeco` – byen Mangaby, husene og skiltene.
 - `CAPTIONS` – teksterne øverst i panelerne.
 - `drawUnicorn`, `drawBlob`, `drawBat`, `drawCoin` – tegningen af enhjørningen, monstrene og mønterne.
 - `ACC`, `MAXV`, `G`, `JV` – hvor hurtigt enhjørningen løber, og hvor højt den hopper.
 
 ## Gemte data
 
-Mønter, købte ting og hvilket kapitel man er nået til gemmes i browserens `localStorage` under nøglen `mangacorn-v1`. Det ligger kun i den browser, man spiller i.
+Mønter, købte ting, venner man har mødt, og hvilket kapitel man er nået til gemmes i browserens `localStorage` under nøglen `mangacorn-v1`. Det ligger kun i den browser, man spiller i.
 
 ## Dele spillet
 
