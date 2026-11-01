@@ -29,7 +29,7 @@ docs/plan.md      Plan og idéer til spillet
 ### Vigtige steder i `src/game.js`
 
 - `ITEMS` – tingene i butikken (navn, pris, beskrivelse). `kind: 'look'` er pynt, `kind: 'boost'` er superkræfter, og ting med samme `slot` kan ikke bæres samtidig.
-- `buildLevel` og `fillPanel` – hvordan kapitler og paneler bygges, og hvad der er i hvert panel.
+- `buildLevel` og `fillPanel` – hvordan kapitler og paneler bygges, og hvad der er i hvert panel. Sværhedsgraden for hvert kapitel bestemmes også her (`pool` og `d`).
 - `FRIENDS` – vennerne (navn, farver, pynt, hvad de siger). `friendFor` bestemmer, hvilken ven der er i hvert kapitel.
 - `buildTown`, `drawHouse` og `drawTownDeco` – byen Mangaby, husene og skiltene.
 - `CAPTIONS` – teksterne øverst i panelerne.
