@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mangacorn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<main class="page">
+  <div class="stage" id="stage">
+    <canvas id="game" aria-label="Mangacorn – enhjørningen på eventyr gennem manga-paneler"></canvas>
+
+    <div class="topbtns">
+      <button class="ibtn" id="btnMute" type="button">Lyd: til</button>
+      <button class="ibtn" id="btnPause" type="button">Pause</button>
+    </div>
+
+    <div class="touch" id="touch" aria-hidden="true">
+      <div class="pad">
+        <button type="button" data-k="left">◀</button>
+        <button type="button" data-k="right">▶</button>
+      </div>
+      <button type="button" data-k="jump" class="jump">HOP</button>
+    </div>
+
+    <section class="screen burst" id="scrTitle">
+      <h1 class="logo">MANGACORN</h1>
+      <p class="sub">Hjælp enhjørningen gennem tegneseriens paneler. Saml sølvmønter, hop på monstrene og køb seje ting i butikken.</p>
+      <div class="purse"><i></i><span id="titleCoins">0</span></div>
+      <div class="row">
+        <button class="btn" id="btnPlay" type="button">Spil kapitel 1</button>
+        <button class="btn alt" id="btnShopFromTitle" type="button">Butik</button>
+      </div>
+      <p class="hint">← → for at gå · Mellemrum for at hoppe · P for pause</p>
+    </section>
+
+    <section class="screen burst" id="scrDone" hidden>
+      <h2 class="big">KAPITEL KLARET!</h2>
+      <p class="sub" id="doneText"></p>
+      <div class="row">
+        <button class="btn" id="btnNext" type="button">Næste kapitel</button>
+        <button class="btn alt" id="btnShopFromDone" type="button">Til butikken</button>
+      </div>
+    </section>
+
+    <section class="screen burst" id="scrOver" hidden>
+      <h2 class="big blue">ÅH NEJ!</h2>
+      <p class="sub" id="overText"></p>
+      <div class="row">
+        <button class="btn" id="btnRetry" type="button">Prøv igen</button>
+        <button class="btn alt" id="btnShopFromOver" type="button">Butik</button>
+      </div>
+    </section>
+
+    <section class="screen" id="scrPause" hidden>
+      <h2 class="big">PAUSE</h2>
+      <div class="row">
+        <button class="btn" id="btnResume" type="button">Fortsæt</button>
+        <button class="btn alt" id="btnHome" type="button">Til forsiden</button>
+      </div>
+    </section>
+
+    <section class="screen" id="scrShop" hidden>
+      <h2 class="big" style="font-size:6cqw">BUTIKKEN</h2>
+      <div class="purse"><i></i><span id="shopCoins">0</span></div>
+      <div class="shopgrid" id="shopGrid"></div>
+      <div class="row">
+        <button class="btn" id="btnShopGo" type="button">Spil kapitel 1</button>
+        <button class="btn alt" id="btnShopHome" type="button">Forsiden</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="legend">
+    <span><b>GÅ</b> <kbd>←</kbd> <kbd>→</kbd> eller <kbd>A</kbd> <kbd>D</kbd></span>
+    <span><b>HOP</b> <kbd>Mellemrum</kbd> <kbd>↑</kbd> eller <kbd>W</kbd></span>
+    <span><b>KAPOW</b> Hop på monstrene ovenfra</span>
+    <span><b>PAUSE</b> <kbd>P</kbd></span>
+  </div>
+</main>
+
+<script src="src/game.js"></script>
+</body>
+</html>

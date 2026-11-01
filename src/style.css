@@ -1,0 +1,75 @@
+/* Grundlæggende nulstilling */
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;min-height:100vh}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: én manga-side — spillet sidder som et stort panel med blæk-kant, og under det en kort spilleguide. Fast blæk-på-papir-look (ét tema med vilje). */
+:root{
+  --paper:#fbfaff;
+  --ink:#16131c;
+  --tone:#ddd7ea;
+  --pink:#ff6fae;
+  --gold:#ffcf3f;
+  --muted:#5b5468;
+  --display:"Bangers","Impact","Arial Black",sans-serif;
+  --body:"Zen Maru Gothic","Trebuchet MS",system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{background:var(--paper);color:var(--ink)}
+body{font-family:var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 28px;
+  background-image:radial-gradient(var(--tone) 1px,transparent 1.4px);background-size:7px 7px}
+.page{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.stage{position:relative;width:100%;max-width:min(100%,1100px,calc((100vh - 150px) * 16 / 9));margin:0 auto;aspect-ratio:16/9;
+  border:4px solid var(--ink);background:#fff;box-shadow:8px 8px 0 var(--ink);touch-action:none;user-select:none;-webkit-user-select:none;
+  container-type:inline-size;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+.topbtns{position:absolute;top:1.6cqw;right:1.6cqw;display:flex;gap:.8cqw;z-index:3}
+.ibtn{font-family:var(--display);letter-spacing:.06em;font-size:max(12px,1.6cqw);padding:.35em .8em;background:#fff;color:var(--ink);
+  border:2.5px solid var(--ink);box-shadow:2px 2px 0 var(--ink);border-radius:3px;cursor:pointer}
+.ibtn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+.touch{position:absolute;inset:auto 0 0 0;display:none;justify-content:space-between;align-items:flex-end;padding:2cqw 2.4cqw;z-index:2;pointer-events:none}
+.stage.touch-on .touch{display:flex}
+@media (pointer:coarse){.touch{display:flex}}
+.touch .pad{display:flex;gap:1.6cqw}
+.touch button{pointer-events:auto;touch-action:none;font-family:var(--display);font-size:max(18px,3.4cqw);width:max(54px,9cqw);height:max(54px,9cqw);
+  border-radius:50%;border:3px solid var(--ink);background:rgba(255,255,255,.75);color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.touch button.jump{background:rgba(255,207,63,.85);width:max(64px,11cqw);height:max(64px,11cqw)}
+.touch button.on{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+
+.screen{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2cqw;
+  padding:3cqw;text-align:center;overflow:auto;background:rgba(251,250,255,.86)}
+.burst{background:
+  repeating-conic-gradient(from 0deg at 50% 42%,rgba(22,19,28,.09) 0deg 2deg,transparent 2deg 8deg),
+  radial-gradient(circle at 50% 42%,rgba(255,255,255,.95) 0 18%,rgba(251,250,255,.85) 60%)}
+.logo{font-family:var(--display);font-size:13cqw;line-height:.9;color:var(--pink);letter-spacing:.04em;margin:0;
+  -webkit-text-stroke:.45cqw var(--ink);paint-order:stroke fill;text-shadow:.7cqw .7cqw 0 var(--ink);transform:rotate(-3deg)}
+.big{font-family:var(--display);font-size:8cqw;line-height:.95;letter-spacing:.04em;margin:0;color:var(--gold);
+  -webkit-text-stroke:.35cqw var(--ink);paint-order:stroke fill;text-shadow:.5cqw .5cqw 0 var(--ink);text-wrap:balance}
+.big.blue{color:#8fd0ff}
+.sub{font-weight:700;font-size:max(13px,2cqw);max-width:60ch;margin:0;text-wrap:balance}
+.hint{font-size:max(11px,1.5cqw);color:var(--muted);margin:0;font-weight:700}
+.row{display:flex;gap:1.6cqw;flex-wrap:wrap;justify-content:center}
+.btn{font-family:var(--display);font-size:max(16px,3cqw);letter-spacing:.06em;padding:.45em 1.2em;border:3px solid var(--ink);background:var(--gold);
+  color:var(--ink);box-shadow:4px 4px 0 var(--ink);cursor:pointer;border-radius:4px}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink)}
+.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.btn.alt{background:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:2px 2px 0 var(--ink)}
+button:focus-visible{outline:3px dashed var(--pink);outline-offset:3px}
+.purse{display:inline-flex;align-items:center;gap:.5em;font-family:var(--display);font-size:max(16px,2.8cqw);letter-spacing:.05em;
+  background:#fff;border:3px solid var(--ink);padding:.15em .8em;border-radius:99px;box-shadow:3px 3px 0 var(--ink);font-variant-numeric:tabular-nums}
+.purse i{width:1.1em;height:1.1em;border-radius:50%;border:2px solid var(--ink);background:radial-gradient(circle at 35% 30%,#fff,#d5d9e2 55%,#9aa1b0)}
+.shopgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.4cqw;width:100%;max-width:86cqw}
+.card{background:#fff;border:3px solid var(--ink);border-radius:4px;padding:1cqw;display:flex;flex-direction:column;gap:.6cqw;align-items:stretch;
+  box-shadow:3px 3px 0 var(--ink);min-width:0}
+.card canvas{width:100%;height:auto;aspect-ratio:4/3;background:#f3f0fb;border:2px solid var(--ink);border-radius:2px}
+.card h3{margin:0;font-family:var(--display);letter-spacing:.05em;font-weight:400;font-size:max(14px,2.2cqw)}
+.card p{margin:0;font-size:max(10px,1.4cqw);color:var(--muted);font-weight:700;min-height:2.6em}
+.card .btn{font-size:max(13px,1.9cqw);padding:.3em .6em;box-shadow:2px 2px 0 var(--ink)}
+.card.worn{background:#fff3f9}
+.legend{display:flex;flex-wrap:wrap;gap:10px 22px;justify-content:center;font-weight:700;font-size:14px;color:var(--muted)}
+.legend b{font-family:var(--display);font-weight:400;letter-spacing:.05em;color:var(--ink);font-size:16px}
+kbd{font-family:var(--body);font-weight:900;font-size:12px;border:2px solid var(--ink);border-bottom-width:3px;border-radius:4px;padding:0 6px;background:#fff;color:var(--ink)}
+@media (max-width:560px){.shopgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
