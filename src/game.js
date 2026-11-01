@@ -107,6 +107,7 @@ const sfx = {
   jump() { beep(380, .16, 'square', .035, 760); },
   jump2() { beep(620, .16, 'triangle', .05, 1240); },
   pop() { beep(900, .14, 'sine', .07, 260); noise(.08, .06); },
+  blow() { beep(300, .18, 'sine', .04, 600); },
   hello() { [784, 988, 1175].forEach((f, i) => beep(f, .1, 'sine', .06, 0, i * .08)); },
   door() { beep(520, .1, 'triangle', .06, 0); beep(780, .14, 'triangle', .06, 0, .09); },
   kapow() { noise(.28, .18); beep(180, .28, 'sawtooth', .07, 55); },
@@ -125,6 +126,9 @@ const CAPTIONS = {
   bats: () => 'Et Tordenpust flyver rundt…',
   storm: () => 'To Tordenpust i luften!',
   trio: () => 'Tre Blobboer på række!',
+  spiky: () => 'Piggi har pigge! Hop over den',
+  ghost: () => 'Bøh! Et lille spøgelse følger efter dig',
+  bubbler: () => 'Boblo puster bobler. Hop på dem!',
   star: () => 'En regnbuestjerne gør dig uovervindelig',
   feather: () => 'En sky-fjer giver dobbelthop',
   goal: () => 'Løb videre til næste side!',
@@ -145,10 +149,17 @@ function buildLevel(n) {
     if (n >= 6) pool.push('storm');
     if (n >= 5) pool.push('trio');
     if (n >= 7) pool.push('trio');
+    // nye monstre: Piggi fra kapitel 3, Bøh fra kapitel 4, Boblo fra kapitel 5
+    if (n >= 3) pool.push('spiky');
+    if (n >= 4) pool.push('ghost');
+    if (n >= 5) pool.push('bubbler');
     seq = ['start'];
     const mids = 3 + Math.min(n, 7);
     let prev = '';
     for (let i = 0; i < mids; i++) { let t; do t = pick(pool); while (t === prev); seq.push(t); prev = t; }
+    // det kapitel, hvor et nyt monster dukker op første gang, har det med for sikkert
+    const debut = { 3: 'spiky', 4: 'ghost', 5: 'bubbler' }[n];
+    if (debut && !seq.includes(debut)) seq[2] = debut;
     seq.push('goal');
   }
   // en ven står i et panel midt i kapitlet
@@ -177,6 +188,10 @@ function fillPanel(L, type, ox, n) {
     hop: n >= 4 && Math.random() < Math.min(.15 * (n - 3), .6), hopT: rand(.8, 2), vy: 0 });
   const F = (x0, x1, y) => L.monsters.push({ type: 'bat', x: ox + (x0 + x1) / 2, y, base: y, min: ox + x0, max: ox + x1, vx: 90 + d * 12, alive: true, t: Math.random() * 6,
     amp: 40 + Math.min(d, 10) * 4, freq: 3 + d * .12 });
+  // Piggi: går på jorden og kan ikke hoppes på. Bøh: svæver efter enhjørningen. Boblo: puster bobler.
+  const S = (x0, x1) => L.monsters.push({ type: 'spiky', x: ox + (x0 + x1) / 2, y: GROUND, min: ox + x0, max: ox + x1, vx: (55 + d * 8) * (Math.random() < .5 ? -1 : 1), alive: true, t: Math.random() * 6 });
+  const Gh = (x0, x1, y) => L.monsters.push({ type: 'ghost', x: ox + (x0 + x1) / 2, y, base: y, min: ox + x0, max: ox + x1, vx: 0, speed: 50 + d * 7, alive: true, t: Math.random() * 6 });
+  const Q = (x, y) => L.monsters.push({ type: 'bubbler', x: ox + x, y, base: y, min: ox + x, max: ox + x, vx: 0, alive: true, t: Math.random() * 6, cd: 1.2, d });
   const I = (kind, x, y) => L.items.push({ kind, x: ox + x, y, taken: false });
   const V = (id, x) => L.friends.push(newFriend(id, ox + x));
   switch (type) {
@@ -189,6 +204,9 @@ function fillPanel(L, type, ox, n) {
     case 'star': P(370, 330, 190); I('star', 465, 300); C(150, 440); C(210, 440); if (n > 1) B(600, 900); break;
     case 'feather': I('feather', 260, 430); P(560, 300, 150); P(740, 170, 150); C(635, 266); C(815, 136); C(815, 90); if (n >= 3 && (n < 8 || Math.random() < .5)) I('heart', 635, 236); break;
     case 'storm': P(330, 360, 200); C(380, 326); C(430, 326); C(480, 326); F(100, 520, 220); F(440, 880, 330); C(700, 440); C(760, 440); break;
+    case 'spiky': S(300, 880); P(420, 330, 170); C(460, 296); C(505, 296); C(550, 296); C(150, 440); C(210, 440); if (n >= 6) B(60, 300); break;
+    case 'ghost': Gh(120, 880, 330); P(220, 360, 180); C(260, 326); C(310, 326); C(360, 326); for (let i = 0; i < 4; i++) C(560 + i * 60, 440); break;
+    case 'bubbler': Q(790, GROUND - 46); P(300, 330, 180); C(340, 296); C(390, 296); C(440, 296); C(160, 440); C(560, 440); break;
     case 'trio': B(40, 320); B(330, 610); B(620, 900); P(140, 320, 160); P(560, 320, 160); C(190, 286); C(240, 286); C(610, 286); C(660, 286); break;
     case 'friend': V(friendFor(n), 640); P(180, 350, 200); C(220, 316); C(280, 316); C(340, 316); C(440, 440); C(500, 440); break;
     case 'goal': L.goal = ox + 700; C(300, 440); C(360, 440); C(420, 440); if (n > 2) F(100, 600, 280); break;
@@ -344,17 +362,38 @@ function update(dt) {
     if (m.x < m.min) { m.x = m.min; m.vx = Math.abs(m.vx); }
     if (m.x > m.max) { m.x = m.max; m.vx = -Math.abs(m.vx); }
     if (m.type === 'bat') m.y = m.base + Math.sin(m.t * m.freq) * m.amp;
+    if (m.type === 'ghost') {
+      // Bøh svæver langsomt hen mod enhjørningen, når den er tæt på
+      const dx = p.x - m.x;
+      m.vx = Math.abs(dx) < 520 && Math.abs(dx) > 6 ? Math.sign(dx) * m.speed : 0;
+      m.y = m.base + Math.sin(m.t * 2.2) * 26 + (p.y - 60 - m.base) * .25;
+    }
+    if (m.type === 'bubbler') {
+      m.y = m.base + Math.sin(m.t * 2) * 6;
+      m.cd -= dt;
+      if (m.cd <= 0 && Math.abs(p.x - m.x) < 760) {
+        const dir = Math.sign(p.x - m.x) || -1;
+        L.monsters.push({ type: 'bubble', x: m.x + dir * 34, y: m.y + 4, base: m.y + 4, min: -1e9, max: 1e9, vx: dir * (150 + m.d * 9), alive: true, t: 0, life: 4.5 });
+        m.cd = Math.max(1.5, 3.1 - m.d * .13); sfx.blow();
+      }
+    }
+    if (m.type === 'bubble') {
+      m.y = m.base + Math.sin(m.t * 5) * 7; m.life -= dt;
+      if (m.life <= 0 || m.x < 0 || m.x > L.width) { m.alive = false; continue; }
+    }
     if (m.hop) {
       m.hopT -= dt;
       if (m.hopT <= 0 && m.y >= GROUND) { m.vy = -640; m.hopT = rand(1.4, 2.4); }
       m.vy += G * dt; m.y = Math.min(GROUND, m.y + m.vy * dt); if (m.y >= GROUND) m.vy = 0;
     }
-    const my = m.type === 'blob' ? m.y - 28 : m.y, r = m.type === 'blob' ? 30 : 24;
+    const my = m.type === 'blob' ? m.y - 28 : m.type === 'spiky' ? m.y - 26 : m.y;
+    const r = { blob: 30, bat: 24, spiky: 32, ghost: 28, bubbler: 26, bubble: 15 }[m.type];
     if (endTimer > 0) continue;
     if (Math.abs(m.x - p.x) < 26 + r * .8 && Math.abs(my - (p.y - 34)) < 30 + r * .8) {
+      const stomp = p.vy > 60 && p.y - 8 < my;
       if (p.star > 0) defeat(m, my);
-      else if (p.vy > 60 && p.y - 8 < my) { defeat(m, my); p.vy = -JV * .68; p.jumps = 1; p.onGround = false; }
-      else if (p.inv <= 0) hurt(m);
+      else if (stomp && m.type !== 'spiky') { defeat(m, my); p.vy = -JV * .68; p.jumps = 1; p.onGround = false; }
+      else if (p.inv <= 0) { hurt(m); if (m.type === 'bubble') m.alive = false; }
     }
   }
   // venner
@@ -394,6 +433,12 @@ function updateFriend(f, dt) {
 }
 
 function defeat(m, my) {
+  if (m.type === 'bubble') {
+    m.alive = false; sfx.pop();
+    burst(m.x, my - 10, 'POP!', { size: .45, fill: '#dff3ff', color: '#3a8fe0', life: .5 });
+    sparkle(m.x, my, 8, ['#ffffff', '#cfe8ff', '#9fd3ff'], 220);
+    return;
+  }
   m.alive = false; bops++;
   burst(m.x, my - 20, pick(['KAPOW!', 'KAPOW!', 'BAM!', 'POW!']));
   if (!reduceMotion) cam.shake = 12;
@@ -583,6 +628,84 @@ function drawBat(m) {
   }
   ctx.restore();
 }
+
+// Piggi: et lille pindsvin. Origo = mellem fødderne.
+function drawSpiky(m) {
+  const dir = Math.sign(m.vx) || 1, bob = Math.abs(Math.sin(m.t * 10)) * 3;
+  ctx.save(); ctx.translate(m.x, m.y - bob); ctx.scale(dir * 1.25, 1.25);
+  ctx.lineJoin = 'round'; ctx.strokeStyle = INK;
+  for (const fx of [-14, 12]) { ctx.beginPath(); ctx.ellipse(fx, -3 + bob * .5, 8, 5, 0, 0, 7); ctx.fillStyle = '#c08457'; ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke(); }
+  // pigge på ryggen
+  ctx.beginPath();
+  const n = 9;
+  for (let i = 0; i <= n * 2; i++) {
+    const a = Math.PI * (1.02 + .86 * i / (n * 2)), rr = i % 2 ? 46 : 30;
+    ctx.lineTo(-6 + Math.cos(a) * rr * 1.05, -18 + Math.sin(a) * rr);
+  }
+  ctx.closePath(); ctx.fillStyle = '#b06fd8'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  ctx.save(); ctx.clip(); ctx.globalAlpha = .4; ctx.fillStyle = tone; ctx.fillRect(-60, -70, 120, 70); ctx.restore();
+  // krop og ansigt
+  ctx.beginPath(); ctx.ellipse(4, -18, 30, 19, 0, 0, 7); ctx.fillStyle = '#ffe2c4'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  ctx.beginPath(); ctx.arc(34, -17, 4.5, 0, 7); ctx.fillStyle = INK; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(18, -24, 6.5, 8.5, 0, 0, 7); ctx.fillStyle = INK; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(18.5, -21.5, 4.5, 5.5, 0, 0, 7); ctx.fillStyle = '#7a4dff'; ctx.fill();
+  ctx.beginPath(); ctx.arc(16, -27, 2.4, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(22, -12); ctx.quadraticCurveTo(26, -9, 29, -12); ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,111,174,.55)'; ctx.beginPath(); ctx.ellipse(10, -12, 5, 3, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
+// Bøh: et lille spøgelse med tungen ude. Origo = midten.
+function drawGhost(m) {
+  const dir = Math.sign(player.x - m.x) || 1, w = Math.sin(m.t * 6) * 3;
+  ctx.save(); ctx.translate(m.x, m.y); ctx.scale(1.2, 1.2); ctx.globalAlpha = .93;
+  ctx.lineJoin = 'round'; ctx.strokeStyle = INK;
+  ctx.beginPath(); ctx.moveTo(-26, 22); ctx.lineTo(-26, -4); ctx.arc(0, -4, 26, Math.PI, 0); ctx.lineTo(26, 22);
+  for (let i = 0; i < 4; i++) { const x0 = 26 - i * 13; ctx.quadraticCurveTo(x0 - 6.5, 30 + (i % 2 ? -w : w), x0 - 13, 22); }
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, -30, 0, 28); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#e3dcff');
+  ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  ctx.globalAlpha = 1;
+  for (const ex of [-9, 9]) {
+    ctx.beginPath(); ctx.ellipse(ex + dir * 3, -6, 5.5, 8, 0, 0, 7); ctx.fillStyle = INK; ctx.fill();
+    ctx.beginPath(); ctx.arc(ex + dir * 3 - 2, -9, 2.2, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
+  }
+  ctx.beginPath(); ctx.ellipse(dir * 3, 8, 6, 4, 0, 0, Math.PI); ctx.fillStyle = INK; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(dir * 3, 11, 3.5, 4, 0, 0, 7); ctx.fillStyle = '#ff7eb6'; ctx.fill(); ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,111,174,.5)'; ctx.beginPath(); ctx.ellipse(-17 + dir * 2, 4, 5, 3, 0, 0, 7); ctx.ellipse(17 + dir * 2, 4, 5, 3, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
+// Boblo: en rund pustefisk. Pusten kinderne op lige før den puster en boble.
+function drawBubbler(m) {
+  const dir = Math.sign(player.x - m.x) || -1, puff = m.cd < .35 ? 1.12 : 1;
+  ctx.save(); ctx.translate(m.x, m.y); ctx.scale(dir * puff, puff);
+  ctx.lineJoin = 'round'; ctx.strokeStyle = INK;
+  // hale og finner
+  ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-42, -14 + Math.sin(m.t * 8) * 3); ctx.lineTo(-42, 14 - Math.sin(m.t * 8) * 3); ctx.closePath();
+  ctx.fillStyle = '#ffb4d6'; ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-6, -24); ctx.quadraticCurveTo(2, -40, 12, -24); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // krop
+  ctx.beginPath(); ctx.arc(0, 0, 27, 0, 7);
+  const g = ctx.createRadialGradient(-8, -10, 4, 0, 0, 28); g.addColorStop(0, '#d7fbf8'); g.addColorStop(1, '#7fdcd6');
+  ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+  for (const [sx, sy] of [[-12, 12], [-4, 18], [-16, 2]]) { ctx.beginPath(); ctx.arc(sx, sy, 2.2, 0, 7); ctx.fillStyle = '#45b3ab'; ctx.fill(); }
+  // øje
+  ctx.beginPath(); ctx.ellipse(8, -7, 6.5, 8.5, 0, 0, 7); ctx.fillStyle = INK; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(8.5, -4.5, 4.5, 5.5, 0, 0, 7); ctx.fillStyle = '#1f8fd6'; ctx.fill();
+  ctx.beginPath(); ctx.arc(6, -10, 2.4, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
+  // spidse læber
+  ctx.beginPath(); ctx.ellipse(26, 6, 5, 6, 0, 0, 7); ctx.fillStyle = '#ff7eb6'; ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(27, 6, 2, 3, 0, 0, 7); ctx.fillStyle = INK; ctx.fill();
+  ctx.fillStyle = 'rgba(255,111,174,.55)'; ctx.beginPath(); ctx.ellipse(12, 8, 5, 3, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
+function drawBubbleShot(m) {
+  ctx.save(); ctx.translate(m.x, m.y);
+  ctx.beginPath(); ctx.arc(0, 0, 17, 0, 7); ctx.fillStyle = 'rgba(170,222,255,.7)'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, 11, -2.6, -1.4); ctx.lineWidth = 3.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(6, 6, 2.5, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.restore();
+}
+const MONSTER_DRAW = { blob: m => drawBlob(m), bat: m => drawBat(m), spiky: drawSpiky, ghost: drawGhost, bubbler: drawBubbler, bubble: drawBubbleShot };
 
 function drawGoal(gx, text = 'VIDERE!') {
   const x = gx + 30, y = GROUND;
@@ -925,7 +1048,7 @@ function draw() {
   for (const c of L.coins) if (!c.taken && near(c)) drawCoin(ctx, c.x, c.y + Math.sin(time * 3 + c.ph) * 3, 15, time, c.ph);
   for (const it of L.items) if (!it.taken && near(it)) drawItem(it);
   for (const f of L.friends) if (near(f)) drawFriend(f);
-  for (const m of L.monsters) if (m.alive && near(m)) (m.type === 'blob' ? drawBlob : drawBat)(m);
+  for (const m of L.monsters) if (m.alive && near(m)) MONSTER_DRAW[m.type](m);
   // fartstreger bag enhjørningen
   const p = player;
   if (Math.abs(p.vx) > 270) {
