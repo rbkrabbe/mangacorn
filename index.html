@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mangacorn</title>
+<meta name="theme-color" content="#fbfaff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mangacorn">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
@@ -19,12 +27,19 @@
       <button class="ibtn" id="btnPause" type="button">Pause</button>
     </div>
 
+    <!-- Knapper til touchskærm (iPad, tablet, telefon). Med 2 spillere får spiller 2 sine egne knapper til højre. -->
     <div class="touch" id="touch" aria-hidden="true">
       <div class="pad">
-        <button type="button" data-k="left">◀</button>
-        <button type="button" data-k="right">▶</button>
+        <button type="button" data-k="left" data-p="0">◀</button>
+        <button type="button" data-k="right" data-p="0">▶</button>
+        <button type="button" data-k="jump" data-p="0" class="jump only2">HOP</button>
       </div>
-      <button type="button" data-k="jump" class="jump">HOP</button>
+      <div class="pad">
+        <button type="button" data-k="jump" data-p="0" class="jump only1">HOP</button>
+        <button type="button" data-k="left" data-p="1" class="p2 only2">◀</button>
+        <button type="button" data-k="right" data-p="1" class="p2 only2">▶</button>
+        <button type="button" data-k="jump" data-p="1" class="jump p2 only2">HOP</button>
+      </div>
     </div>
 
     <div class="enterwrap" id="enterWrap" hidden><button class="btn" id="btnEnter" type="button">Gå ind i butikken ↓</button></div>
@@ -38,7 +53,8 @@
         <button class="btn alt" id="btnTownFromTitle" type="button">Mangaby</button>
         <button class="btn alt" id="btnShopFromTitle" type="button">Butik</button>
       </div>
-      <p class="hint">← → for at gå · Mellemrum for at hoppe · P for pause</p>
+      <button class="btn alt small" id="btnPlayers" type="button" aria-pressed="false">1 spiller</button>
+      <p class="hint" id="titleHint">← → for at gå · Mellemrum for at hoppe · P for pause</p>
     </section>
 
     <section class="screen burst" id="scrDone" hidden>
@@ -82,6 +98,7 @@
   <div class="legend">
     <span><b>GÅ</b> <kbd>←</kbd> <kbd>→</kbd> eller <kbd>A</kbd> <kbd>D</kbd></span>
     <span><b>HOP</b> <kbd>Mellemrum</kbd> <kbd>↑</kbd> eller <kbd>W</kbd></span>
+    <span><b>2 SPILLERE</b> Spiller 1: <kbd>A</kbd> <kbd>D</kbd> <kbd>W</kbd> · Spiller 2: <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd></span>
     <span><b>KAPOW</b> Hop på monstrene ovenfra</span>
     <span><b>PAUSE</b> <kbd>P</kbd></span>
   </div>

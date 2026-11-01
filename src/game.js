@@ -33,7 +33,7 @@ const tone = ctx.createPattern(toneCanvas, 'repeat');
 
 // ---------- Gem / hent ----------
 const SAVE_KEY = 'mangacorn-v1';
-let save = { coins: 0, owned: [], worn: [], best: 1, friends: [] };
+let save = { coins: 0, owned: [], worn: [], best: 1, friends: [], players: 1 };
 try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && typeof s === 'object') save = Object.assign(save, s); } catch (e) {}
 if (!Array.isArray(save.friends)) save.friends = [];
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
@@ -83,7 +83,8 @@ const FR = Object.fromEntries(FRIENDS.map(f => [f.id, f]));
 // ---------- Lyd (lille synth, starter efter første klik/tast) ----------
 let actx = null, muted = false;
 function initAudio() {
-  if (actx) return;
+  // iPad/iPhone starter lyden på pause, indtil man rører skærmen, så den vækkes her
+  if (actx) { if (actx.state === 'suspended') actx.resume().catch(() => {}); return; }
   try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; }
 }
 function beep(f, d, type = 'square', vol = .05, slide = 0, delay = 0) {
@@ -247,20 +248,36 @@ function buildTown() {
 }
 
 // ---------- Spiltilstand ----------
-let state = 'title', chapter = save.best, level = buildLevel(chapter), player, cam = { x: 0, shake: 0 };
+let state = 'title', chapter = save.best, level = buildLevel(chapter), player, players = [], cam = { x: 0, shake: 0 };
 let fx = [], particles = [], runCoins = 0, bops = 0, time = 0, speech = null, endTimer = 0, newFriendId = null, nearDoor = null;
 const ACC = 2600, MAXV = 330, FRICT = 2400, G = 2200, JV = 820;
 
-function newPlayer(x) {
+// Spiller 2 er en lyseblå enhjørning, så man kan se forskel.
+const P2_PAL = { body: '#ffffff', back: '#e2ebf7', hoof: '#8fb8e6', muzzle: '#f2f8ff', ear: '#ffc3dd', horn: '#ffd23f', mane: ['#7cc6ff', '#9ff0d2', '#4aa8f0', '#d8f3ff'], iris: '#1f8fd6' };
+function newPlayer(x, idx = 0) {
   const extra = save.owned.includes('heart') ? 1 : 0;
-  return { x, y: GROUND, vx: 0, vy: 0, face: 1, onGround: true, jumps: 0, coyote: 0, buffer: 0,
+  return { idx, out: false, x, y: GROUND, vx: 0, vy: 0, face: 1, onGround: true, jumps: 0, coyote: 0, buffer: 0,
     hearts: 3 + extra, maxHearts: 3 + extra, inv: 0, star: 0, feather: false, dbl: save.owned.includes('wings'), walk: 0, squash: 0,
     shield: save.owned.includes('bubble'), magnet: save.owned.includes('magnet') };
 }
-player = newPlayer(level.panels[0].x + 100);
+// Laver én eller to spillere, alt efter hvad der er valgt på forsiden.
+function makePlayers(x) {
+  players = [newPlayer(x, 0)];
+  if (save.players === 2) players.push(newPlayer(Math.max(GUT + 40, x - 70), 1));
+  player = players[0];
+}
+makePlayers(level.panels[0].x + 100);
+const active = () => players.filter(p => !p.out);
+// den spiller, der er tættest på x (bruges af monstre og venner)
+function nearestPlayer(x) {
+  let best = null;
+  for (const p of active()) if (!best || Math.abs(p.x - x) < Math.abs(best.x - x)) best = p;
+  return best || player;
+}
 
 // ---------- Input ----------
-const keys = {}; const touch = { left: false, right: false, jump: false }; let jumpQueued = false;
+const keys = {}; const touches = [{ left: false, right: false, jump: false }, { left: false, right: false, jump: false }], touch = touches[0];
+const jumpQueued = [false, false];
 const JUMPKEYS = [' ', 'arrowup', 'w'];
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
@@ -268,16 +285,16 @@ addEventListener('keydown', e => {
   if (state === 'play' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown', ' '].includes(k)) e.preventDefault();
   if ((k === 'p' || k === 'escape') && (state === 'play' || state === 'pause')) { togglePause(); return; }
   if (state === 'play' && nearDoor && ['arrowdown', 's', 'enter'].includes(k)) { e.preventDefault(); enterDoor(); return; }
-  if (JUMPKEYS.includes(k) && !e.repeat && state === 'play') jumpQueued = true;
+  if (JUMPKEYS.includes(k) && !e.repeat && state === 'play') jumpQueued[players.length > 1 && k === 'arrowup' ? 1 : 0] = true;
   keys[k] = true;
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (state === 'play') togglePause(); });
-stage.addEventListener('touchstart', () => stage.classList.add('touch-on'), { passive: true });
+stage.addEventListener('touchstart', () => { if (!stage.classList.contains('touch-on')) { stage.classList.add('touch-on'); if (typeof refreshLabels === 'function' && state === 'title') refreshLabels(); } initAudio(); }, { passive: true });
 document.querySelectorAll('#touch button').forEach(b => {
-  const k = b.dataset.k;
-  const on = e => { e.preventDefault(); initAudio(); touch[k] = true; b.classList.add('on'); if (k === 'jump') jumpQueued = true; try { b.setPointerCapture(e.pointerId); } catch (_) {} };
-  const off = () => { touch[k] = false; b.classList.remove('on'); };
+  const k = b.dataset.k, pi = Number(b.dataset.p || 0), t = touches[pi];
+  const on = e => { e.preventDefault(); initAudio(); t[k] = true; b.classList.add('on'); if (k === 'jump') jumpQueued[pi] = true; try { b.setPointerCapture(e.pointerId); } catch (_) {} };
+  const off = () => { t[k] = false; b.classList.remove('on'); };
   b.addEventListener('pointerdown', on);
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => b.addEventListener(ev, off));
 });
@@ -295,14 +312,39 @@ function sparkle(x, y, n, colors, speed = 260) {
 }
 
 // ---------- Opdatering ----------
-function update(dt) {
-  const p = player, L = level;
-  time += 0;
-  const left = keys.arrowleft || keys.a || touch.left, right = keys.arrowright || keys.d || touch.right;
-  const held = keys[' '] || keys.arrowup || keys.w || touch.jump;
-  if (jumpQueued) { p.buffer = .13; jumpQueued = false; } else p.buffer -= dt;
+// Hvilke taster styrer hvilken spiller. Med én spiller virker alle taster.
+function controls(p) {
+  if (players.length < 2) return { left: keys.arrowleft || keys.a || touch.left, right: keys.arrowright || keys.d || touch.right, held: keys[' '] || keys.arrowup || keys.w || touch.jump };
+  if (p.idx === 0) return { left: keys.a || touch.left, right: keys.d || touch.right, held: keys[' '] || keys.w || touch.jump };
+  return { left: keys.arrowleft || touches[1].left, right: keys.arrowright || touches[1].right, held: keys.arrowup || touches[1].jump };
+}
 
+function update(dt) {
+  const L = level;
   if (endTimer > 0) { endTimer -= dt; if (endTimer <= 0) gameOver(); }
+  for (const p of players) { if (p.out) updateOut(p, dt); else updatePlayer(p, dt); }
+  updateWorld(dt);
+}
+
+// En spiller, der har mistet alle hjerter, svæver i en boble efter den anden spiller.
+// Hopper den anden ind i boblen, er spilleren reddet med ét hjerte.
+function updateOut(p, dt) {
+  const buddy = nearestPlayer(p.x);
+  if (buddy === p || buddy.out) return;
+  const tx = buddy.x - buddy.face * 80, ty = buddy.y - 120 + Math.sin(time * 3) * 8;
+  p.x += (tx - p.x) * Math.min(1, dt * 2.5); p.y += (ty - p.y) * Math.min(1, dt * 2.5);
+  p.vx = 0; p.vy = 0; p.onGround = false; p.walk += 0;
+  jumpQueued[p.idx] = false;
+  if (endTimer <= 0 && Math.hypot(buddy.x - p.x, (buddy.y - 34) - (p.y - 50)) < 64) {
+    p.out = false; p.hearts = 1; p.inv = 2; p.vy = -300; sfx.power();
+    burst(p.x, p.y - 100, 'REDDET!', { size: .7, fill: '#fff4b8', color: '#ff6fae', life: .9 });
+    sparkle(p.x, p.y - 50, 18, ['#ffffff', '#cfe8ff', '#ff9ecb'], 320);
+  }
+}
+
+function updatePlayer(p, dt) {
+  const L = level, { left, right, held } = controls(p);
+  if (jumpQueued[p.idx]) { p.buffer = .13; jumpQueued[p.idx] = false; } else p.buffer -= dt;
 
   const dir = (right ? 1 : 0) - (left ? 1 : 0);
   const maxv = MAXV * (p.star > 0 ? 1.3 : 1);
@@ -354,6 +396,10 @@ function update(dt) {
       sparkle(it.x, it.y, 16, ['#ff7eb6', '#ffd23f', '#7cc6ff', '#a78bfa'], 300);
     }
   }
+}
+
+function updateWorld(dt) {
+  const L = level, p = nearestPlayer(cam.x + W / 2);
   // monstre
   for (const m of L.monsters) {
     if (!m.alive) continue;
@@ -362,6 +408,7 @@ function update(dt) {
     if (m.x < m.min) { m.x = m.min; m.vx = Math.abs(m.vx); }
     if (m.x > m.max) { m.x = m.max; m.vx = -Math.abs(m.vx); }
     if (m.type === 'bat') m.y = m.base + Math.sin(m.t * m.freq) * m.amp;
+    const p = nearestPlayer(m.x);
     if (m.type === 'ghost') {
       // Bøh svæver langsomt hen mod enhjørningen, når den er tæt på
       const dx = p.x - m.x;
@@ -389,30 +436,42 @@ function update(dt) {
     const my = m.type === 'blob' ? m.y - 28 : m.type === 'spiky' ? m.y - 26 : m.y;
     const r = { blob: 30, bat: 24, spiky: 32, ghost: 28, bubbler: 26, bubble: 15 }[m.type];
     if (endTimer > 0) continue;
-    if (Math.abs(m.x - p.x) < 26 + r * .8 && Math.abs(my - (p.y - 34)) < 30 + r * .8) {
-      const stomp = p.vy > 60 && p.y - 8 < my;
-      if (p.star > 0) defeat(m, my);
-      else if (stomp && m.type !== 'spiky') { defeat(m, my); p.vy = -JV * .68; p.jumps = 1; p.onGround = false; }
-      else if (p.inv <= 0) { hurt(m); if (m.type === 'bubble') m.alive = false; }
+    for (const q of active()) {
+      if (!m.alive) break;
+      if (Math.abs(m.x - q.x) < 26 + r * .8 && Math.abs(my - (q.y - 34)) < 30 + r * .8) {
+        const stomp = q.vy > 60 && q.y - 8 < my;
+        if (q.star > 0) defeat(m, my);
+        else if (stomp && m.type !== 'spiky') { defeat(m, my); q.vy = -JV * .68; q.jumps = 1; q.onGround = false; }
+        else if (q.inv <= 0) { hurt(m, q); if (m.type === 'bubble') m.alive = false; }
+      }
     }
   }
   // venner
   for (const f of L.friends) updateFriend(f, dt);
   // døre i byen
-  const door = L.doors.find(d => Math.abs(p.x - d.x) < 60 && p.onGround) || null;
+  const door = L.doors.find(d => active().some(q => Math.abs(q.x - d.x) < 60 && q.onGround)) || null;
   if (door !== nearDoor) { nearDoor = door; $('enterWrap').hidden = !door; }
   // mål
-  if (L.goal && p.x > L.goal && endTimer <= 0) { if (L.town) startChapter(save.best); else chapterDone(); return; }
+  if (L.goal && endTimer <= 0 && active().some(q => q.x > L.goal)) { if (L.town) startChapter(save.best); else chapterDone(); return; }
 
-  // kamera glider fra panel til panel
-  const target = clamp(Math.floor(p.x / PW) * PW, 0, L.width - W);
+  // kamera glider fra panel til panel og følger den spiller, der er længst fremme.
+  // Er den anden spiller blevet tilbage, bliver den trukket med ind i det nye panel.
+  const lead = active().reduce((a, b) => (b.x > a.x ? b : a), active()[0] || player);
+  const panelX = Math.floor(lead.x / PW) * PW;
+  for (const q of active()) {
+    if (q !== lead && q.x < panelX + GUT) {
+      q.x = panelX + GUT + 60; q.y = GROUND; q.vx = 0; q.vy = 0; q.onGround = true;
+      sparkle(q.x, q.y - 40, 12, ['#ffffff', '#cfe8ff', '#ffd6ea'], 220);
+    }
+  }
+  const target = clamp(panelX, 0, L.width - W);
   cam.x += (target - cam.x) * Math.min(1, dt * 7);
   cam.shake = Math.max(0, cam.shake - dt * 40);
   if (speech) { speech.t -= dt; if (speech.t <= 0) speech = null; }
 }
 
 function updateFriend(f, dt) {
-  const fr = FR[f.id], p = player;
+  const fr = FR[f.id], p = nearestPlayer(f.x);
   f.hv -= G * dt; f.hy += f.hv * dt; if (f.hy <= 0) { f.hy = 0; f.hv = 0; }
   f.cool -= dt;
   f.face = p.x < f.x ? -1 : 1;
@@ -447,8 +506,7 @@ function defeat(m, my) {
   sparkle(m.x, my, 16, ['#ffe14a', '#ff7eb6', '#ffffff', '#a78bfa'], 340);
   sfx.kapow();
 }
-function hurt(m) {
-  const p = player;
+function hurt(m, p = player) {
   if (p.shield) {
     p.shield = false; p.inv = 1.2; sfx.pop();
     p.vx = (p.x < m.x ? -1 : 1) * 380; p.vy = -460; p.onGround = false;
@@ -460,7 +518,11 @@ function hurt(m) {
   p.vx = (p.x < m.x ? -1 : 1) * 420; p.vy = -520; p.onGround = false;
   burst(p.x, p.y - 80, 'AU!', { size: .7, fill: '#cfe8ff', color: '#2b6fd6', life: .6 });
   if (!reduceMotion) cam.shake = 7;
-  if (p.hearts <= 0) endTimer = .9;
+  if (p.hearts <= 0) {
+    p.out = true; p.star = 0;
+    if (!active().length) endTimer = .9;
+    else burst(p.x, p.y - 130, 'HJÆLP!', { size: .55, fill: '#ffffff', color: '#2b6fd6', life: .9 });
+  }
 }
 
 function tickEffects(dt) {
@@ -590,7 +652,7 @@ function drawItem(it) {
 }
 
 function drawBlob(m) {
-  const sq = Math.sin(m.t * 8) * .06, dir = Math.sign(player.x - m.x) || 1;
+  const sq = Math.sin(m.t * 8) * .06, dir = Math.sign(nearestPlayer(m.x).x - m.x) || 1;
   ctx.save(); ctx.translate(m.x, m.y); ctx.scale(1 + sq, 1 - sq);
   ctx.beginPath(); ctx.moveTo(-34, 0); ctx.bezierCurveTo(-38, -42, -20, -58, 0, -58); ctx.bezierCurveTo(20, -58, 38, -42, 34, 0); ctx.closePath();
   const g = ctx.createLinearGradient(0, -58, 0, 0);
@@ -611,7 +673,7 @@ function drawBlob(m) {
 }
 
 function drawBat(m) {
-  const fl = Math.sin(m.t * 14) * .5, dir = Math.sign(player.x - m.x) || 1;
+  const fl = Math.sin(m.t * 14) * .5, dir = Math.sign(nearestPlayer(m.x).x - m.x) || 1;
   ctx.save(); ctx.translate(m.x, m.y);
   for (const side of [-1, 1]) {
     ctx.save(); ctx.scale(side, 1); ctx.rotate(fl * .6);
@@ -656,7 +718,7 @@ function drawSpiky(m) {
 }
 // Bøh: et lille spøgelse med tungen ude. Origo = midten.
 function drawGhost(m) {
-  const dir = Math.sign(player.x - m.x) || 1, w = Math.sin(m.t * 6) * 3;
+  const dir = Math.sign(nearestPlayer(m.x).x - m.x) || 1, w = Math.sin(m.t * 6) * 3;
   ctx.save(); ctx.translate(m.x, m.y); ctx.scale(1.2, 1.2); ctx.globalAlpha = .93;
   ctx.lineJoin = 'round'; ctx.strokeStyle = INK;
   ctx.beginPath(); ctx.moveTo(-26, 22); ctx.lineTo(-26, -4); ctx.arc(0, -4, 26, Math.PI, 0); ctx.lineTo(26, 22);
@@ -676,7 +738,7 @@ function drawGhost(m) {
 }
 // Boblo: en rund pustefisk. Pusten kinderne op lige før den puster en boble.
 function drawBubbler(m) {
-  const dir = Math.sign(player.x - m.x) || -1, puff = m.cd < .35 ? 1.12 : 1;
+  const dir = Math.sign(nearestPlayer(m.x).x - m.x) || -1, puff = m.cd < .35 ? 1.12 : 1;
   ctx.save(); ctx.translate(m.x, m.y); ctx.scale(dir * puff, puff);
   ctx.lineJoin = 'round'; ctx.strokeStyle = INK;
   // hale og finner
@@ -1003,20 +1065,51 @@ function drawFriend(f) {
   ctx.restore();
 }
 
-function drawHUD() {
-  const p = player;
-  ctx.save();
-  for (let i = 0; i < (level.town ? 0 : p.maxHearts); i++) {
-    heartPath(ctx, 48 + i * 36, 34, 28); ctx.fillStyle = i < p.hearts ? '#ff5e9a' : '#ffffff'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+function drawPlayer(p) {
+  const pal = p.idx ? P2_PAL : undefined;
+  if (p.out) {
+    // ude: svæver i en boble og venter på at blive reddet
+    ctx.save(); ctx.globalAlpha = .55;
+    drawUnicorn(ctx, { ...p, vx: 0, onGround: true, squash: 0 }, time, save.worn, { pal, bubble: true });
+    ctx.restore();
+    ctx.save(); ctx.font = '700 16px "Zen Maru Gothic", "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+    ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.strokeText('Hop ind i boblen!', p.x, p.y - 128);
+    ctx.fillStyle = INK; ctx.fillText('Hop ind i boblen!', p.x, p.y - 128); ctx.restore();
+    return;
   }
+  // fartstreger bag enhjørningen
+  if (Math.abs(p.vx) > 270) {
+    ctx.strokeStyle = 'rgba(22,19,28,.5)'; ctx.lineWidth = 2.5;
+    for (let i = 0; i < 3; i++) { const yy = p.y - 22 - i * 16, x0 = p.x - p.face * (46 + i * 6); ctx.beginPath(); ctx.moveTo(x0, yy); ctx.lineTo(x0 - p.face * (30 + i * 10), yy); ctx.stroke(); }
+  }
+  ctx.save();
+  if (p.inv > 0 && Math.floor(time * 20) % 2) ctx.globalAlpha = .35;
+  drawUnicorn(ctx, p, time, save.worn, { pal, wings: p.dbl || p.feather, star: p.star > 0, bubble: p.shield });
+  ctx.restore();
+}
+
+function drawHUD() {
+  const p = player, two = players.length > 1;
+  ctx.save();
+  if (!level.town) players.forEach((q, row) => {
+    const y = 34 + row * 38, x0 = two ? 78 : 48;
+    if (two) {
+      // lille nummerskilt i spillerens manke-farve
+      ctx.beginPath(); ctx.arc(44, y - 2, 14, 0, 7); ctx.fillStyle = (q.idx ? P2_PAL.mane : maneColors(false, 0))[0]; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+      ctx.font = '22px Bangers, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText(String(q.idx + 1), 44, y - 1);
+    }
+    for (let i = 0; i < q.maxHearts; i++) {
+      heartPath(ctx, x0 + i * 36, y, 28); ctx.fillStyle = i < q.hearts ? '#ff5e9a' : '#ffffff'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+    }
+  });
   ctx.lineJoin = 'round';
-  const cy = level.town ? 40 : 92;
+  const cy = level.town ? 40 : 92 + (two ? 38 : 0);
   drawCoin(ctx, 48, cy, 15, time, 0);
   ctx.font = '32px Bangers, Impact, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   const txt = String(save.coins + runCoins);
   ctx.lineWidth = 6; ctx.strokeStyle = INK; ctx.strokeText(txt, 72, cy + 2); ctx.fillStyle = '#fff'; ctx.fillText(txt, 72, cy + 2);
   if (level.town) { ctx.restore(); return; }
-  let y = 126;
+  let y = cy + 34;
   if (p.star > 0) {
     ctx.fillStyle = '#fff'; ctx.fillRect(34, y, 124, 12); const g = ctx.createLinearGradient(34, 0, 158, 0);
     for (let i = 0; i <= 5; i++) g.addColorStop(i / 5, `hsl(${(time * 200 + i * 60) % 360} 95% 62%)`);
@@ -1049,16 +1142,8 @@ function draw() {
   for (const it of L.items) if (!it.taken && near(it)) drawItem(it);
   for (const f of L.friends) if (near(f)) drawFriend(f);
   for (const m of L.monsters) if (m.alive && near(m)) MONSTER_DRAW[m.type](m);
-  // fartstreger bag enhjørningen
   const p = player;
-  if (Math.abs(p.vx) > 270) {
-    ctx.strokeStyle = 'rgba(22,19,28,.5)'; ctx.lineWidth = 2.5;
-    for (let i = 0; i < 3; i++) { const yy = p.y - 22 - i * 16, x0 = p.x - p.face * (46 + i * 6); ctx.beginPath(); ctx.moveTo(x0, yy); ctx.lineTo(x0 - p.face * (30 + i * 10), yy); ctx.stroke(); }
-  }
-  ctx.save();
-  if (p.inv > 0 && Math.floor(time * 20) % 2) ctx.globalAlpha = .35;
-  drawUnicorn(ctx, p, time, save.worn, { wings: p.dbl || p.feather, star: p.star > 0, bubble: p.shield });
-  ctx.restore();
+  for (const q of [...players].reverse()) drawPlayer(q);
   for (const q of particles) {
     ctx.save(); ctx.globalAlpha = 1 - q.t / q.life; ctx.fillStyle = q.c;
     if (q.star) { starPath(ctx, q.x, q.y, q.size, q.size * .45); ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = INK; ctx.stroke(); }
@@ -1081,6 +1166,14 @@ function refreshLabels() {
   $('titleCoins').textContent = save.coins;
   $('btnPlay').textContent = `Spil kapitel ${save.best}`;
   $('btnShopGo').textContent = `Spil kapitel ${save.best}`;
+  const two = save.players === 2;
+  $('btnPlayers').textContent = two ? '2 spillere' : '1 spiller';
+  $('btnPlayers').setAttribute('aria-pressed', String(two));
+  const touchScreen = stage.classList.contains('touch-on') || (window.matchMedia && matchMedia('(pointer:coarse)').matches);
+  stage.classList.toggle('two', two);
+  $('titleHint').textContent = touchScreen
+    ? (two ? 'Spiller 1 bruger knapperne til venstre, spiller 2 knapperne til højre' : 'Brug knapperne på skærmen for at gå og hoppe')
+    : (two ? 'Spiller 1: A D og W · Spiller 2: ← → og ↑ · P for pause' : '← → for at gå · Mellemrum for at hoppe · P for pause');
 }
 function goTitle() { state = 'title'; refreshLabels(); show('title'); }
 
@@ -1088,10 +1181,11 @@ function resetRun() {
   cam.x = 0; cam.shake = 0; runCoins = 0; bops = 0; fx = []; particles = []; endTimer = 0; newFriendId = null;
   nearDoor = null; $('enterWrap').hidden = true;
   for (const k in keys) keys[k] = false;
+  jumpQueued[0] = jumpQueued[1] = false;
 }
 function startChapter(n) {
   initAudio();
-  chapter = n; level = buildLevel(n); player = newPlayer(level.panels[0].x + 100);
+  chapter = n; level = buildLevel(n); makePlayers(level.panels[0].x + 100);
   resetRun();
   speech = { text: n === 1 ? 'Lad os gå!' : pick(['Videre!', 'Nyt kapitel!', 'Mere eventyr!']), t: 2.4 };
   state = 'play'; show(null);
@@ -1099,7 +1193,7 @@ function startChapter(n) {
 }
 function startTown() {
   initAudio();
-  level = buildTown(); player = newPlayer(level.panels[0].x + 100);
+  level = buildTown(); makePlayers(level.panels[0].x + 100);
   resetRun();
   speech = { text: save.friends.length ? 'Hjem til Mangaby!' : 'Hvem bor mon her?', t: 2.4 };
   state = 'play'; show(null);
@@ -1139,7 +1233,7 @@ function openShop(from) {
 function closeShop() {
   if (shopReturn !== 'town') { goTitle(); return; }
   // tilbage til byen, lige foran butiksdøren (nye ting virker med det samme)
-  player = newPlayer(player.x); for (const k in keys) keys[k] = false;
+  makePlayers(player.x); for (const k in keys) keys[k] = false;
   state = 'play'; show(null); cv.focus?.();
 }
 function renderShop() {
@@ -1230,6 +1324,7 @@ $('btnHome').onclick = () => goTitle();
 $('btnShopGo').onclick = () => startChapter(save.best);
 $('btnShopHome').onclick = () => closeShop();
 $('btnTownFromTitle').onclick = () => startTown();
+$('btnPlayers').onclick = () => { save.players = save.players === 2 ? 1 : 2; persist(); refreshLabels(); };
 $('btnTownFromDone').onclick = () => startTown();
 $('btnEnter').onclick = () => enterDoor();
 $('btnPause').onclick = () => { initAudio(); if (state === 'play' || state === 'pause') togglePause(); };
