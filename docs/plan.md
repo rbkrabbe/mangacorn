@@ -61,6 +61,12 @@
 - Havfruehalen er turkis og lilla med en lyserød halefinne. Når man har fået den, kommer den selv frem, hver gang enhjørningen er i vandet, og så svømmer man hurtigere.
 - Øen er med i hvert kapitel, indtil man har fået halen. Fra kapitel 4 kan der også komme almindelige havpaneler, og fra kapitel 5 kan Boblo bo under vandet.
 
+## Bjerge og bakker (lavet)
+- Et stort lilla bjerg med sne og et flag på toppen. Man går op ad den ene side og ned ad den anden. Når man når toppen første gang, står der "TOPPEN!", flaget bliver gult, og man får 3 mønter.
+- Et panel med grønne bakker op og ned.
+- Bjerget er med i kapitel 2, og både bjerg og bakker kan komme i alle senere kapitler.
+- Blobbo og Piggi går op og ned ad bjergsiderne.
+
 ## Idéer til næste skridt
 - Egne tegninger af enhjørningen og monstrene.
 - Flere slags paneler: panel der vender på hovedet, mørkt panel med lommelygte, boss-panel.

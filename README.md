@@ -45,6 +45,7 @@ docs/plan.md      Plan og idéer til spillet
 - `buildLevel` og `fillPanel` – hvordan kapitler og paneler bygges, og hvad der er i hvert panel. Sværhedsgraden for hvert kapitel bestemmes også her (`pool` og `d`).
 - `FRIENDS` – vennerne (navn, farver, pynt, hvad de siger). `friendFor` bestemmer, hvilken ven der er i hvert kapitel.
 - `buildTown`, `drawHouse` og `drawTownDeco` – byen Mangaby, husene og skiltene.
+- `hillY`, `groundAt` og `drawHill` – bjerge og bakker. Bjergets form er en liste af hjørnepunkter (`pts`) i `fillPanel`.
 - `SURF`, `SEA_FLOOR`, `updateMermaid`, `drawSeaPanel`, `drawMermaid` og `drawMerTail` – havet, havfruen Marina og havfruehalen. `TAIL_COLORS` og `FIN_COLOR` er halens farver.
 - `CAPTIONS` – teksterne øverst i panelerne.
 - `drawUnicorn`, `drawBlob`, `drawBat`, `drawSpiky`, `drawGhost`, `drawBubbler`, `drawCoin` – tegningen af enhjørningen, monstrene og mønterne.

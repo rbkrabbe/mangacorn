@@ -136,6 +136,8 @@ const CAPTIONS = {
   ghost: () => 'Bøh! Et lille spøgelse følger efter dig',
   bubbler: () => 'Boblo puster bobler. Hop på dem!',
   island: () => 'En lille ø midt i havet…',
+  mountain: () => 'Et kæmpe bjerg! Gå over toppen',
+  hills: () => 'Bakke op og bakke ned',
   sea: () => save.tail ? 'Hop i vandet med din havfruehale!' : 'Dyk ned i havet!',
   star: () => 'En regnbuestjerne gør dig uovervindelig',
   feather: () => 'En sky-fjer giver dobbelthop',
@@ -147,7 +149,7 @@ const friendFor = n => FRIENDS[(n - 1) % FRIENDS.length].id;
 function buildLevel(n) {
   let seq;
   if (n === 1) seq = ['start', 'coins', 'steps', 'blob', 'star', 'goal'];
-  else if (n === 2) seq = ['start', 'coins', 'feather', 'blob', 'bats', 'twoblob', 'goal'];
+  else if (n === 2) seq = ['start', 'coins', 'feather', 'mountain', 'blob', 'bats', 'twoblob', 'goal'];
   else {
     // Sværhedsgrad: jo højere kapitel, jo flere svære paneler og jo færre power-ups.
     const pool = ['blob', 'steps', 'bats', 'twoblob', 'bats', 'twoblob', 'blob', 'feather', 'star'];
@@ -162,6 +164,7 @@ function buildLevel(n) {
     if (n >= 4) pool.push('ghost');
     if (n >= 5) pool.push('bubbler');
     if (n >= 4) pool.push('sea');
+    pool.push('mountain', 'hills');
     seq = ['start'];
     const mids = 3 + Math.min(n, 7);
     let prev = '';
@@ -175,7 +178,7 @@ function buildLevel(n) {
   seq.splice(n === 1 ? 2 : Math.ceil(seq.length / 2), 0, 'friend');
   // havfrue-øen: fra kapitel 3, indtil man har fået havfruehalen
   if (n >= 3 && !save.tail) seq.splice(seq.length - 1, 0, 'island');
-  const L = { panels: [], coins: [], monsters: [], plats: [], items: [], friends: [], doors: [], houses: [], deco: [], seas: [], mermaid: null, goal: 0, width: seq.length * PW, n };
+  const L = { panels: [], coins: [], monsters: [], plats: [], items: [], friends: [], doors: [], houses: [], deco: [], seas: [], hills: [], mermaid: null, goal: 0, width: seq.length * PW, n };
   seq.forEach((type, p) => {
     const x = p * PW + GUT, w = PW - 2 * GUT;
     const sea = type === 'island' || type === 'sea';
@@ -220,6 +223,24 @@ function fillPanel(L, type, ox, n) {
     case 'spiky': S(300, 880); P(420, 330, 170); C(460, 296); C(505, 296); C(550, 296); C(150, 440); C(210, 440); if (n >= 6) B(60, 300); break;
     case 'ghost': Gh(120, 880, 330); P(220, 360, 180); C(260, 326); C(310, 326); C(360, 326); for (let i = 0; i < 4; i++) C(560 + i * 60, 440); break;
     case 'bubbler': Q(790, GROUND - 46); P(300, 330, 180); C(340, 296); C(390, 296); C(440, 296); C(160, 440); C(560, 440); break;
+    case 'mountain': {
+      // et stort bjerg med sne og et flag på toppen. pts er bjergets kant fra venstre mod højre.
+      const pts = [[100, GROUND], [290, 330], [420, 200], [510, 200], [640, 330], [830, GROUND]];
+      L.hills.push({ kind: 'mountain', pts: pts.map(([x, y]) => [ox + x, y]), x0: ox + 100, x1: ox + 830, peak: { x: ox + 465, y: 200 }, reached: false });
+      for (const lx of [200, 260, 330, 380, 465, 550, 600, 670, 730]) C(lx, hillY(pts, lx) - 46);
+      P(560, 120, 130); C(600, 86); C(650, 86);
+      if (n >= 3) B(600, 820);
+      if (n >= 5) S(110, 400);
+      break;
+    }
+    case 'hills': {
+      const pts = [[60, GROUND], [210, 360], [330, 370], [440, GROUND], [520, GROUND], [660, 320], [780, 330], [880, GROUND]];
+      L.hills.push({ kind: 'hills', pts: pts.map(([x, y]) => [ox + x, y]), x0: ox + 60, x1: ox + 880 });
+      for (const lx of [150, 230, 300, 480, 600, 680, 760]) C(lx, hillY(pts, lx) - 46);
+      if (n >= 3) B(440, 900);
+      if (n >= 4) F(150, 800, 220);
+      break;
+    }
     case 'island': {
       // havet går fra x 170 til 750; øen ligger midt i, og muslingen med havfruehalen ligger på bunden
       L.seas.push({ x0: ox + 170, x1: ox + 750, floor: SEA_FLOOR });
@@ -251,7 +272,7 @@ function newFriend(id, x) {
 // ---------- Mangaby: den lille by mellem kapitlerne ----------
 const TOWN_CAPTIONS = ['Velkommen til Mangaby!', 'Her bor dine venner', 'Ud på eventyr igen!'];
 function buildTown() {
-  const L = { panels: [], coins: [], monsters: [], plats: [], items: [], friends: [], doors: [], houses: [], deco: [], seas: [], mermaid: null, goal: 0, width: 3 * PW, n: 1, town: true };
+  const L = { panels: [], coins: [], monsters: [], plats: [], items: [], friends: [], doors: [], houses: [], deco: [], seas: [], hills: [], mermaid: null, goal: 0, width: 3 * PW, n: 1, town: true };
   for (let p = 0; p < 3; p++) {
     const x = p * PW + GUT, w = PW - 2 * GUT;
     const deco = { lines: [], rays: [], clouds: [] };
@@ -304,7 +325,19 @@ function nearestPlayer(x) {
 }
 
 function seaAt(x) { for (const sz of level.seas || []) if (x > sz.x0 && x < sz.x1) return sz; return null; }
-function groundAt(x) { const sz = seaAt(x); return sz ? sz.floor : GROUND; }
+// Højden af en bakke/et bjerg i punktet x (punkterne er hjørnerne på bjergets kant)
+function hillY(pts, x) {
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+    if (x >= ax && x <= bx) return ay + (by - ay) * (x - ax) / (bx - ax);
+  }
+  return GROUND;
+}
+function groundAt(x) {
+  const sz = seaAt(x); if (sz) return sz.floor;
+  for (const h of level.hills || []) if (x > h.x0 && x < h.x1) return hillY(h.pts, x);
+  return GROUND;
+}
 
 // ---------- Input ----------
 const keys = {}; const touches = [{ left: false, right: false, jump: false }, { left: false, right: false, jump: false }], touch = touches[0];
@@ -422,6 +455,8 @@ function updatePlayer(p, dt) {
   const land = yy => { p.y = yy; if (!wasGround && p.vy > 450) p.squash = .2; p.vy = 0; p.onGround = true; };
   const gy = groundAt(p.x);
   if (p.y >= gy) land(gy);
+  // går man ned ad en bakke, bliver man på jorden i stedet for at hoppe ned i små trin
+  else if (wasGround && p.vy >= 0 && !wet && gy - p.y < 24) land(gy);
   for (const pl of L.plats) {
     if (p.vy >= 0 && prevY <= pl.y + 1 && p.y >= pl.y && p.x + 18 > pl.x && p.x - 18 < pl.x + pl.w) land(pl.y);
   }
@@ -482,10 +517,11 @@ function updateWorld(dt) {
       if (m.life <= 0 || m.x < 0 || m.x > L.width || (m.y > SURF && !seaAt(m.x) && L.seas.length)) { m.alive = false; continue; }
     }
     if (m.hop) {
+      const gy = groundAt(m.x);
       m.hopT -= dt;
-      if (m.hopT <= 0 && m.y >= GROUND) { m.vy = -640; m.hopT = rand(1.4, 2.4); }
-      m.vy += G * dt; m.y = Math.min(GROUND, m.y + m.vy * dt); if (m.y >= GROUND) m.vy = 0;
-    }
+      if (m.hopT <= 0 && m.y >= gy - 1) { m.vy = -640; m.hopT = rand(1.4, 2.4); }
+      m.vy += G * dt; m.y = Math.min(gy, m.y + m.vy * dt); if (m.y >= gy) m.vy = 0;
+    } else if (m.type === 'blob' || m.type === 'spiky') m.y = groundAt(m.x);
     const my = m.type === 'blob' ? m.y - 28 : m.type === 'spiky' ? m.y - 26 : m.y;
     const r = { blob: 30, bat: 24, spiky: 32, ghost: 28, bubbler: 26, bubble: 15 }[m.type];
     if (endTimer > 0) continue;
@@ -502,6 +538,12 @@ function updateWorld(dt) {
   // venner
   for (const f of L.friends) updateFriend(f, dt);
   if (L.mermaid) updateMermaid(L.mermaid, dt);
+  // på toppen af bjerget
+  for (const h of L.hills) if (h.peak && !h.reached && active().some(q => q.onGround && Math.abs(q.x - h.peak.x) < 50 && q.y <= h.peak.y + 2)) {
+    h.reached = true; sfx.win(); runCoins += 3; floatText(h.peak.x, h.peak.y - 150, '+3');
+    burst(h.peak.x, h.peak.y - 120, 'TOPPEN!', { size: .7, fill: '#ffffff', color: '#ff6fae', life: 1.1 });
+    sparkle(h.peak.x, h.peak.y - 60, 20, ['#ffffff', '#ff9ecb', '#ffd23f', '#7cc6ff'], 320);
+  }
   // døre i byen
   const door = L.doors.find(d => active().some(q => Math.abs(q.x - d.x) < 60 && q.onGround)) || null;
   if (door !== nearDoor) { nearDoor = door; $('enterWrap').hidden = !door; }
@@ -932,6 +974,56 @@ function drawMermaid(mm) {
   ctx.fillStyle = 'rgba(255,111,174,.55)'; ctx.beginPath(); ctx.ellipse(13, -39, 4, 2.5, 0, 0, 7); ctx.ellipse(-11, -39, 4, 2.5, 0, 0, 7); ctx.fill();
   ctx.restore();
 }
+// Bjerge og bakker i manga-stil: lilla bjerg med sne og flag, grønne bakker med græstotter.
+function drawHill(h) {
+  const pts = h.pts, mountain = h.kind === 'mountain';
+  ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = INK;
+  const bottom = H - GUT - 3;
+  const path = () => { ctx.beginPath(); ctx.moveTo(pts[0][0], bottom); for (const [x, y] of pts) ctx.lineTo(x, y); ctx.lineTo(pts[pts.length - 1][0], bottom); ctx.closePath(); };
+  path();
+  const top = Math.min(...pts.map(q => q[1]));
+  const g = ctx.createLinearGradient(0, top, 0, GROUND);
+  if (mountain) { g.addColorStop(0, '#d9ccf5'); g.addColorStop(1, '#a995de'); } else { g.addColorStop(0, '#b6efc6'); g.addColorStop(1, '#7fd39b'); }
+  ctx.fillStyle = g; ctx.fill();
+  ctx.save(); ctx.clip();
+  // skygge med screentone på højre side
+  ctx.globalAlpha = .45; ctx.fillStyle = tone;
+  for (let i = 1; i < pts.length; i++) if (pts[i][1] > pts[i - 1][1]) { ctx.beginPath(); ctx.moveTo(pts[i - 1][0], pts[i - 1][1]); ctx.lineTo(pts[i][0], pts[i][1]); ctx.lineTo(pts[i][0], bottom); ctx.lineTo(pts[i - 1][0], bottom); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  if (mountain) {
+    // snetop med takket kant
+    const snow = top + 70;
+    ctx.beginPath(); ctx.moveTo(pts[0][0], top - 10);
+    for (let x = pts[0][0], i = 0; x <= pts[pts.length - 1][0]; x += 22, i++) ctx.lineTo(x, snow + (i % 2 ? 14 : 0));
+    ctx.lineTo(pts[pts.length - 1][0], top - 10); ctx.closePath();
+    ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+    // klippestreger
+    ctx.strokeStyle = 'rgba(22,19,28,.35)'; ctx.lineWidth = 2;
+    for (const [fx, fy, len] of [[.3, .55, 40], [.62, .5, 50], [.75, .75, 36], [.2, .8, 30]]) {
+      const x = pts[0][0] + (pts[pts.length - 1][0] - pts[0][0]) * fx, y = top + (GROUND - top) * fy;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len * .4, y + len); ctx.stroke();
+    }
+  } else {
+    ctx.strokeStyle = '#3fae6a'; ctx.lineWidth = 2.5;
+    for (let x = pts[0][0] + 30; x < pts[pts.length - 1][0] - 20; x += 46) {
+      const y = hillY(pts, x) + 18; ctx.beginPath(); ctx.moveTo(x - 6, y + 6); ctx.lineTo(x - 2, y - 4); ctx.moveTo(x, y + 6); ctx.lineTo(x + 2, y - 6); ctx.moveTo(x + 6, y + 6); ctx.lineTo(x + 7, y - 2); ctx.stroke();
+    }
+  }
+  ctx.restore();
+  // kant
+  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const [x, y] of pts) ctx.lineTo(x, y);
+  ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.stroke();
+  // flag på toppen
+  if (h.peak) {
+    const fx = h.peak.x + 30, fy = h.peak.y, wv = Math.sin(time * 5) * 4;
+    ctx.fillStyle = '#5b5468'; ctx.fillRect(fx - 2.5, fy - 80, 5, 80); ctx.lineWidth = 2; ctx.strokeRect(fx - 2.5, fy - 80, 5, 80);
+    ctx.beginPath(); ctx.moveTo(fx + 2, fy - 78); ctx.quadraticCurveTo(fx + 22, fy - 74 + wv, fx + 42, fy - 66 + wv); ctx.lineTo(fx + 2, fy - 54); ctx.closePath();
+    ctx.fillStyle = h.reached ? '#ffd23f' : '#ff6fae'; ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+    starPath(ctx, fx + 16, fy - 66 + wv * .5, 6, 2.6); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 1.4; ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // Øen: en sandbanke med en palme
 function drawIsland(pl) {
   const x = pl.x, y = pl.y, w = pl.w;
@@ -1378,6 +1470,7 @@ function draw() {
   const nearW = (x, w) => x + w > cam.x - 60 && x < cam.x + W + 60;
   for (const d of L.deco) if (nearW(d.x - 160, 320)) drawTownDeco(d);
   for (const h of L.houses) if (nearW(h.x - 30, h.w + 60)) drawHouse(h);
+  for (const h of L.hills) if (nearW(h.x0, h.x1 - h.x0)) drawHill(h);
   for (const pl of L.plats) if (pl.x + pl.w > cam.x - 40 && pl.x < cam.x + W + 40) (pl.kind === 'island' ? drawIsland : drawCloudPlat)(pl);
   if (L.goal) drawGoal(L.goal, L.goalText);
   for (const c of L.coins) if (!c.taken && near(c)) drawCoin(ctx, c.x, c.y + Math.sin(time * 3 + c.ph) * 3, 15, time, c.ph);
