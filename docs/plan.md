@@ -40,6 +40,20 @@
 - Boblo (fra kapitel 5): en pustefisk, der puster bobler mod enhjørningen. Boblerne gør ondt, men man kan hoppe på dem, så de springer (POP!). Man kan også hoppe på Boblo selv.
 - Det kapitel, hvor et nyt monster dukker op første gang, har det altid med, og panelet fortæller, hvad man skal gøre.
 
+## To spillere (lavet)
+- På forsiden vælger man "1 spiller" eller "2 spillere". Valget huskes.
+- Spiller 1 er den lyserøde enhjørning og styrer med A, D og W (eller Mellemrum). Spiller 2 er den lyseblå enhjørning og styrer med ←, → og ↑.
+- På en touchskærm har spiller 1 knapperne til venstre og spiller 2 knapperne til højre.
+- Hver spiller har sine egne hjerter, men mønterne er fælles.
+- Kameraet følger den, der er længst fremme. Den anden bliver trukket med ind i det nye panel.
+- Mister en spiller alle hjerter, svæver den i en boble efter den anden. Hopper den anden ind i boblen, er spilleren reddet med ét hjerte. Spillet er først slut, når begge er ude.
+
+## iPad og tablets (lavet)
+- Touch-knapperne virker på iPad, også for to spillere på én gang.
+- Lyden vækkes, når man rører skærmen (det kræver iPad).
+- Ingen zoom ved dobbelttryk, og tasteoversigten under spillet skjules på touchskærme.
+- Spillet har et ikon og kan lægges på hjemmeskærmen: Del-knappen i Safari → "Føj til hjemmeskærm". Så åbner det i fuld skærm.
+
 ## Idéer til næste skridt
 - Egne tegninger af enhjørningen og monstrene.
 - Flere slags paneler: panel der vender på hovedet, mørkt panel med lommelygte, boss-panel.
