@@ -34,8 +34,13 @@
 - Regnbuestjerner og mønt-paneler bliver sjældnere, og fra kapitel 8 er der ikke altid et hjerte.
 - Vennens panel er altid uden monstre.
 
+## Nye monstre (lavet)
+- Piggi (fra kapitel 3): et lille pindsvin med lilla pigge. Man kan ikke hoppe på det, så man skal hoppe over det. En regnbuestjerne kan besejre det.
+- Bøh (fra kapitel 4): et lille spøgelse med tungen ude, der svæver efter enhjørningen. Man kan hoppe på det.
+- Boblo (fra kapitel 5): en pustefisk, der puster bobler mod enhjørningen. Boblerne gør ondt, men man kan hoppe på dem, så de springer (POP!). Man kan også hoppe på Boblo selv.
+- Det kapitel, hvor et nyt monster dukker op første gang, har det altid med, og panelet fortæller, hvad man skal gøre.
+
 ## Idéer til næste skridt
 - Egne tegninger af enhjørningen og monstrene.
 - Flere slags paneler: panel der vender på hovedet, mørkt panel med lommelygte, boss-panel.
-- Flere monstre.
 - Musik.

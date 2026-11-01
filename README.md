@@ -1,6 +1,6 @@
 # Mangacorn
 
-Et browserspil om en enhjørning, der løber gennem manga-tegneseriepaneler. Man samler sølvmønter med en sky på, hopper på søde monstre (KAPOW!), samler power-ups og køber ting til enhjørningen i butikken.
+Et browserspil om en enhjørning, der løber gennem manga-tegneseriepaneler. Man samler sølvmønter med en sky på, hopper på søde monstre (KAPOW!), hopper over Piggi, samler power-ups og køber ting til enhjørningen i butikken.
 
 Spillet er lavet med almindelig HTML, CSS og JavaScript og tegner alt på et `<canvas>`. Det kræver ingen installation og kører i alle moderne browsere, også Chrome på en Chromebook.
 
@@ -33,7 +33,7 @@ docs/plan.md      Plan og idéer til spillet
 - `FRIENDS` – vennerne (navn, farver, pynt, hvad de siger). `friendFor` bestemmer, hvilken ven der er i hvert kapitel.
 - `buildTown`, `drawHouse` og `drawTownDeco` – byen Mangaby, husene og skiltene.
 - `CAPTIONS` – teksterne øverst i panelerne.
-- `drawUnicorn`, `drawBlob`, `drawBat`, `drawCoin` – tegningen af enhjørningen, monstrene og mønterne.
+- `drawUnicorn`, `drawBlob`, `drawBat`, `drawSpiky`, `drawGhost`, `drawBubbler`, `drawCoin` – tegningen af enhjørningen, monstrene og mønterne.
 - `ACC`, `MAXV`, `G`, `JV` – hvor hurtigt enhjørningen løber, og hvor højt den hopper.
 
 ## Gemte data
