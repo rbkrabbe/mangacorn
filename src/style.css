@@ -69,7 +69,12 @@ button:focus-visible{outline:3px dashed var(--pink);outline-offset:3px}
 .card p{margin:0;font-size:max(10px,1.4cqw);color:var(--muted);font-weight:700;min-height:2.6em}
 .card .btn{font-size:max(13px,1.9cqw);padding:.3em .6em;box-shadow:2px 2px 0 var(--ink)}
 .card.worn{background:#fff3f9}
+#scrShop{justify-content:flex-start}
+.shopgrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.shophead{grid-column:1/-1;margin:1cqw 0 0;text-align:left;font-family:var(--display);font-weight:400;letter-spacing:.06em;font-size:max(18px,3cqw);
+  color:var(--pink);-webkit-text-stroke:.2cqw var(--ink);paint-order:stroke fill}
 .legend{display:flex;flex-wrap:wrap;gap:10px 22px;justify-content:center;font-weight:700;font-size:14px;color:var(--muted)}
 .legend b{font-family:var(--display);font-weight:400;letter-spacing:.05em;color:var(--ink);font-size:16px}
 kbd{font-family:var(--body);font-weight:900;font-size:12px;border:2px solid var(--ink);border-bottom-width:3px;border-radius:4px;padding:0 6px;background:#fff;color:var(--ink)}
+@media (max-width:760px){.shopgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:560px){.shopgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
