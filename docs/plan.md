@@ -18,6 +18,13 @@
 - Nye superkræfter: møntmagnet (mønter i nærheden flyver hen til en), bobleskjold (tager det første slag i hvert kapitel) og firkløver (monstre giver 4 mønter i stedet for 2).
 - Butikken er delt i "Pynt" og "Superkræfter" og har 4 kort i hver række.
 
+## Venner og Mangaby (lavet)
+- Fem andre mangacorns: Pip, Luna, Kiko, Bobbi og Nova. Hver har sine egne farver, sin egen pynt og sine egne replikker.
+- Der står én ven i hvert kapitel (Pip i kapitel 1, Luna i kapitel 2 osv.). Første gang man møder en ven, giver den 5 mønter og flytter ind i Mangaby. Senere giver den 3 mønter.
+- Mangaby er en lille by, man kan gå rundt i mellem kapitlerne. Den har et velkomstskilt, en butik man kan gå ind i, et hus til hver ven og et skilt videre til næste kapitel.
+- Huse for venner, man ikke har mødt endnu, har gråt tag, slukket lys og et "?" på skiltet.
+- Man kommer til Mangaby fra forsiden og fra skærmen, når et kapitel er klaret.
+
 ## Idéer til næste skridt
 - Egne tegninger af enhjørningen og monstrene.
 - Flere slags paneler: panel der vender på hovedet, mørkt panel med lommelygte, boss-panel.

@@ -27,12 +27,15 @@
       <button type="button" data-k="jump" class="jump">HOP</button>
     </div>
 
+    <div class="enterwrap" id="enterWrap" hidden><button class="btn" id="btnEnter" type="button">Gå ind i butikken ↓</button></div>
+
     <section class="screen burst" id="scrTitle">
       <h1 class="logo">MANGACORN</h1>
       <p class="sub">Hjælp enhjørningen gennem tegneseriens paneler. Saml sølvmønter, hop på monstrene og køb seje ting i butikken.</p>
       <div class="purse"><i></i><span id="titleCoins">0</span></div>
       <div class="row">
         <button class="btn" id="btnPlay" type="button">Spil kapitel 1</button>
+        <button class="btn alt" id="btnTownFromTitle" type="button">Mangaby</button>
         <button class="btn alt" id="btnShopFromTitle" type="button">Butik</button>
       </div>
       <p class="hint">← → for at gå · Mellemrum for at hoppe · P for pause</p>
@@ -42,7 +45,8 @@
       <h2 class="big">KAPITEL KLARET!</h2>
       <p class="sub" id="doneText"></p>
       <div class="row">
-        <button class="btn" id="btnNext" type="button">Næste kapitel</button>
+        <button class="btn" id="btnTownFromDone" type="button">Til Mangaby</button>
+        <button class="btn alt" id="btnNext" type="button">Næste kapitel</button>
         <button class="btn alt" id="btnShopFromDone" type="button">Til butikken</button>
       </div>
     </section>

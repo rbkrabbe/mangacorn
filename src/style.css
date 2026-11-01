@@ -78,3 +78,5 @@ button:focus-visible{outline:3px dashed var(--pink);outline-offset:3px}
 kbd{font-family:var(--body);font-weight:900;font-size:12px;border:2px solid var(--ink);border-bottom-width:3px;border-radius:4px;padding:0 6px;background:#fff;color:var(--ink)}
 @media (max-width:760px){.shopgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:560px){.shopgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.enterwrap{position:absolute;left:0;right:0;bottom:3cqw;display:flex;justify-content:center;z-index:3;pointer-events:none}
+.enterwrap .btn{pointer-events:auto;font-size:max(14px,2.2cqw)}
