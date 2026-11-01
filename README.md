@@ -28,7 +28,7 @@ docs/plan.md      Plan og idéer til spillet
 
 ### Vigtige steder i `src/game.js`
 
-- `ITEMS` – tingene i butikken (navn, pris, beskrivelse).
+- `ITEMS` – tingene i butikken (navn, pris, beskrivelse). `kind: 'look'` er pynt, `kind: 'boost'` er superkræfter, og ting med samme `slot` kan ikke bæres samtidig.
 - `buildLevel` og `fillPanel` – hvordan kapitler og paneler bygges, og hvad der er i hvert panel.
 - `CAPTIONS` – teksterne øverst i panelerne.
 - `drawUnicorn`, `drawBlob`, `drawBat`, `drawCoin` – tegningen af enhjørningen, monstrene og mønterne.

@@ -13,8 +13,13 @@
 - Butik: rød sløjfe, stjernebriller, heltekappe, regnbuemanke, ekstra hjerte, skyvinger.
 - Kapitler bliver længere og sværere. Styring med tastatur eller touch-knapper.
 
+## Flere ting i butikken (lavet)
+- Ny pynt: stribede sokker, ninja-pandebånd, blomsterkrans, halstørklæde, glimmerhorn og guldkrone. Krone og blomsterkrans sidder begge om hornet, så man kan kun have én af dem på ad gangen.
+- Nye superkræfter: møntmagnet (mønter i nærheden flyver hen til en), bobleskjold (tager det første slag i hvert kapitel) og firkløver (monstre giver 4 mønter i stedet for 2).
+- Butikken er delt i "Pynt" og "Superkræfter" og har 4 kort i hver række.
+
 ## Idéer til næste skridt
 - Egne tegninger af enhjørningen og monstrene.
 - Flere slags paneler: panel der vender på hovedet, mørkt panel med lommelygte, boss-panel.
-- Flere monstre og flere ting i butikken.
+- Flere monstre.
 - Musik.
