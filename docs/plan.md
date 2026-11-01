@@ -54,6 +54,13 @@
 - Ingen zoom ved dobbelttryk, og tasteoversigten under spillet skjules på touchskærme.
 - Spillet har et ikon og kan lægges på hjemmeskærmen: Del-knappen i Safari → "Føj til hjemmeskærm". Så åbner det i fuld skærm.
 
+## Havet og havfruehalen (lavet)
+- Fra kapitel 3 er der en ø midt i havet lige før målet. Når man står på øen (eller hopper i vandet), dukker havfruen Marina op og fortæller, at havfruehalen ligger i en lyserød musling på havbunden.
+- I vandet synker man langsomt. Hop er et svømmetag op, og ↓ eller S dykker hurtigere. Tæt på overfladen hopper man helt op af vandet, og man kan gå direkte op på stranden.
+- Kameraet glider ned under vandet, når man dykker.
+- Havfruehalen er turkis og lilla med en lyserød halefinne. Når man har fået den, kommer den selv frem, hver gang enhjørningen er i vandet, og så svømmer man hurtigere.
+- Øen er med i hvert kapitel, indtil man har fået halen. Fra kapitel 4 kan der også komme almindelige havpaneler, og fra kapitel 5 kan Boblo bo under vandet.
+
 ## Idéer til næste skridt
 - Egne tegninger af enhjørningen og monstrene.
 - Flere slags paneler: panel der vender på hovedet, mørkt panel med lommelygte, boss-panel.
